@@ -280,7 +280,8 @@ def camera_match(list_customer_cameras: List[str]) -> None:
                 )
                 list_customer_cameras.remove(camera)
                 continue
-            elif set_score == 100:
+
+            if set_score == 100:
                 traced_cameras.append(
                     (
                         camera,
