@@ -1,0 +1,25 @@
+Camera Name            Camera Count  Supported Type    Manufacturer    Model          Firmware    Additional Notes
+-------------------  --------------  ----------------  --------------  -------------  ----------  ------------------
+Axis P3367                        1  exact             Axis            axis p3367     6.50.5.13
+Axis M7001                        1  potential         Axis            axis m3007     6.50.5.4
+Axis M3027                        1  potential         Axis            axis m3007     6.50.5.4
+Axis P3247-LVE                    1  potential         Axis            axis p3228-lv  6.50.5
+Axis P3245-V                      1  potential         Axis            axis p3228-lv  6.50.5
+SNP-6320RH                        1  unsupported
+QND-6070R                         1  unsupported
+AV2255PMIR-SH                     1  unsupported
+AV3255PMIR-SH                     1  unsupported
+Axis P8221                        1  unsupported
+Axis M5525-E                      1  unsupported
+Axis P3224-V-Mk II                1  unsupported
+Axis FA54                         1  unsupported
+Axis F44                          1  unsupported
+P200                              1  unsupported
+NDV-8502-RX                       1  unsupported
+NDE-5702-AL                       1  unsupported
+NBE-7604-AL-OC                    1  unsupported
+Evolution                         1  unsupported
+EVO-05LxD                         1  unsupported
+FS-IP4180                         1  unsupported
+FS-IP5000-M                       1  unsupported
+3.0C-H4A-25G-BO2-IR               1  unsupported
