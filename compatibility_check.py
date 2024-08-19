@@ -11,8 +11,13 @@ Purpose: Import a list of third-party cameras and return to the terminal
 import csv
 from typing import Dict, List, Optional, Tuple, Union
 
+import colorama
+from colorama import Fore, Style
 from tabulate import tabulate
 from thefuzz import fuzz, process
+
+# Initialize colorized output
+colorama.init(autoreset=True)
 
 
 class CompatibleModel:
@@ -194,7 +199,9 @@ def identify_model_column() -> Optional[int]:
     if scores:
         return scores.index(max(scores))
 
-    print("No valid scores found. Check your input data.")
+    print(
+        f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
+    )
     return None
 
 
@@ -246,6 +253,7 @@ def camera_match(list_customer_cameras: List[str]) -> None:
         None: The function modifies the global state by updating the
             traced_cameras list.
     """
+
     def get_camera_name(camera_obj: Optional[CompatibleModel]) -> str:
         return camera_obj.model_name if camera_obj is not None else ""
 
@@ -264,18 +272,30 @@ def camera_match(list_customer_cameras: List[str]) -> None:
             )
             if score == 100 or sort_score == 100:
                 traced_cameras.append(
-                    (camera, "exact", get_camera_name(find_matching_camera(camera)))
+                    (
+                        camera,
+                        "exact",
+                        get_camera_name(find_matching_camera(camera)),
+                    )
                 )
                 list_customer_cameras.remove(camera)
                 continue
             elif set_score == 100:
                 traced_cameras.append(
-                    (camera, "identified", get_camera_name(find_matching_camera(match)))
+                    (
+                        camera,
+                        "identified",
+                        get_camera_name(find_matching_camera(match)),
+                    )
                 )
                 list_customer_cameras.remove(camera)
             elif score >= 80:
                 traced_cameras.append(
-                    (camera, "potential", get_camera_name(find_matching_camera(match)))
+                    (
+                        camera,
+                        "potential",
+                        get_camera_name(find_matching_camera(match)),
+                    )
                 )
                 list_customer_cameras.remove(camera)
             else:
@@ -324,6 +344,8 @@ def print_list_data():
 
     # Sort the output list based on the custom sorting key
     output.sort(key=sort_key)
+
+    print(Fore.LIGHTBLACK_EX)  # Set color to gray
     print(
         tabulate(
             output,
@@ -338,6 +360,8 @@ def print_list_data():
             ],
         )
     )
+    print(Style.RESET_ALL)  # Reset the color
+
     with open("camera_models.txt", "w", encoding="UTF-8") as f:
         f.write(
             tabulate(
@@ -375,4 +399,4 @@ if model_column := identify_model_column():
     print_list_data()
 
 else:
-    print("Could not identify model column.")
+    print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
