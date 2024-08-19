@@ -1,25 +1,36 @@
-Camera Name            Camera Count  Supported Type    Manufacturer    Model          Firmware    Additional Notes
--------------------  --------------  ----------------  --------------  -------------  ----------  ------------------
-Axis P3367                        1  exact             Axis            axis p3367     6.50.5.13
-Axis M7001                        1  potential         Axis            axis m3007     6.50.5.4
-Axis M3027                        1  potential         Axis            axis m3007     6.50.5.4
-Axis P3247-LVE                    1  potential         Axis            axis p3228-lv  6.50.5
-Axis P3245-V                      1  potential         Axis            axis p3228-lv  6.50.5
-SNP-6320RH                        1  unsupported
-QND-6070R                         1  unsupported
-AV2255PMIR-SH                     1  unsupported
-AV3255PMIR-SH                     1  unsupported
-Axis P8221                        1  unsupported
-Axis M5525-E                      1  unsupported
-Axis P3224-V-Mk II                1  unsupported
-Axis FA54                         1  unsupported
-Axis F44                          1  unsupported
-P200                              1  unsupported
-NDV-8502-RX                       1  unsupported
-NDE-5702-AL                       1  unsupported
-NBE-7604-AL-OC                    1  unsupported
-Evolution                         1  unsupported
-EVO-05LxD                         1  unsupported
-FS-IP4180                         1  unsupported
-FS-IP5000-M                       1  unsupported
-3.0C-H4A-25G-BO2-IR               1  unsupported
+Camera Name                              Camera Count  Supported Type    Manufacturer    Model           Firmware             Additional Notes
+-------------------------------------  --------------  ----------------  --------------  --------------  -------------------  ------------------
+SNC-DH180                                           3  exact             Sony            snc-dh180       1.88.00
+Q1647                                               1  exact             Axis            q1647           11.10.61
+M4318-PLVE B8A44F74FCC0                             1  identified        Axis            m4318-plve      11.4.63
+DS-2CD2143G0-I 20200429AAWRE38852244                1  identified        Hikvision       ds-2cd2143g0-i  V5.6.2 build 190701
+DS-2CD2143G0-I 20200415AAWRE28307877                1  identified        Hikvision       ds-2cd2143g0-i  V5.6.2 build 190701
+P1447-LE ACCC8ED2C522                               1  identified        Axis            p1447-le        11.10.61
+DS-2CD2143G0-I 20190924AAWRD66059729                1  identified        Hikvision       ds-2cd2143g0-i  V5.6.2 build 190701
+P3717-PLE B8A44F0707E1                              1  identified        Axis            p3717-ple       10.1.0
+P1447-LE ACCC8ED2C585                               1  identified        Axis            p1447-le        11.10.61
+P1447-LE ACCC8ED2C528                               1  identified        Axis            p1447-le        11.10.61
+P1447-LE ACCC8EF28993                               1  identified        Axis            p1445-le-3      11.10.61
+DS-2CD2143G0-I 20210103AAWRF35835620                1  identified        Hikvision       ds-2cd2143g0-i  V5.6.2 build 190701
+Q1604                                               5  potential         Axis            q1647           11.10.61
+P1405-LE                                            1  potential         Axis            p1445-le        11.10.61
+P3905                                               1  unsupported
+P1344                                               1  unsupported
+M3027 ACCC8E3F0AA3 (4 views)                        1  unsupported
+HES324-MB 20200806AAWR244994639                     1  unsupported
+HES324-MB 20200806AAWR244994461                     1  unsupported
+DS-2CD2752F-IZS 20170218BBWR717557192               1  unsupported
+DS-2CD2752F-IZS 20170218BBWR717557140               1  unsupported
+DS-2CD2752F-IZS 20170211BBWR713516953               1  unsupported
+P3265-LVWE B8A44F9ED3F3                             1  unsupported
+DS-2CD2752F-IZS 20170218BBWR717557111               1  unsupported
+DS-2CD2752F-IZS 20170218BBWR717557131               1  unsupported
+P3225-V Mk II ACCC8EC7A3B3                          1  unsupported
+P3245-LVE ACCC8EF039FE                              1  unsupported
+NER-L2 3b67f7                                       1  unsupported
+HES324-MB 20200806AAWR244994341                     1  unsupported
+M3066-V B8A44F1BF2C1                                1  unsupported
+DT085G 20210112AAWRE96879530                        1  unsupported
+DT085G 20210112AAWRE96879429                        1  unsupported
+M3075-V B8A44F33745C                                1  unsupported
+P1343                                               1  unsupported

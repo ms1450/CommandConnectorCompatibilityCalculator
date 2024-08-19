@@ -4,18 +4,21 @@ from tabulate import tabulate
 import csv
 
 
+# Compatible Camera Data
 class CompatibleModel:
     def __init__(self, model_name, manufacturer, minimum_supported_firmware_version, notes):
         self.model_name = model_name
         self.manufacturer = manufacturer
         self.minimum_supported_firmware_version = minimum_supported_firmware_version
         self.notes = notes
+        self.channels = 0
 
     def __str__(self):
         return self.model_name
 
 
-# Get a list of camera models
+# Get a list of Compatible Camera Models
+# Returns List with Camera Model Names
 def get_camera_list(compatible_models):
     if type(compatible_models) is list:
         camera_names = []
@@ -28,15 +31,18 @@ def get_camera_list(compatible_models):
         return []
 
 
+# Checks Compatible Camera list
+# Returns Compatible Camera or None
 def find_matching_camera(camera_name):
     global verkada_cameras
     for camera in verkada_cameras:
         if camera.model_name == camera_name.lower():
             return camera
-    return "No Matching Camera Found"
+    return None
 
 
 # Parse the Hardware Compatibility List for the Command Connector
+# Returns a list of Compatible Camera objects
 def parse_compatibility_list(filename):
     compatible_models = []
     with open(filename, newline='') as csvfile:
@@ -51,18 +57,18 @@ def parse_compatibility_list(filename):
     return compatible_models
 
 
-# Read the List of Customer Camera
+# Read the list of Customer Cameras and return a list of columns
 def read_customer_list(filename):
     with open(filename, newline='') as csvfile:
         reader = csv.reader(csvfile)
         # Use zip(*reader) to transpose rows into columns
         columns = list(zip(*reader))
-
     # Convert each column from tuple to list
     return [list(column) for column in columns]
 
 
-# Identify the Camera Model Column
+# Identify the Camera Model Column by calculating fuzz score for each column
+# Returns Integer of Column Position or None
 def identify_model_column():
     global customer_cameras_raw
     global verkada_cameras_list
@@ -86,6 +92,8 @@ def identify_model_column():
 
 
 # Get Model and Statistics
+# Counts the number of instances for Camera Name to appear
+# Returns a dictionary with Camera name as key and its count as value
 def get_camera_count(column_number):
     global customer_cameras_raw
     camera_statistics = {}
@@ -93,10 +101,8 @@ def get_camera_count(column_number):
         # Skip this value if it contains 'model' (case-insensitive)
         if 'model' in value.lower():
             continue
-
         # Strip leading and trailing whitespace
         value = value.strip()
-
         # Only process non-empty values
         if value:
             if value not in camera_statistics:
@@ -105,8 +111,10 @@ def get_camera_count(column_number):
                 camera_statistics[value] += 1
     return camera_statistics
 
-# Complete Camera Match
-# [Original Name, 'exact'/'identified'/'potential'/'unsupported', Camera Model]
+
+# Check Customer Camera against HCL using Ratio Fuzz, Token Sort Ration Fuzz and Token Set Ratio Fuzz
+# Updates 'traced_cameras' list with the following format: [Original Name, 'exact'/'identified'/'potential'
+# /'unsupported', Camera Model]
 def camera_match(list_customer_cameras):
     global verkada_cameras_list
     global traced_cameras
@@ -129,6 +137,7 @@ def camera_match(list_customer_cameras):
                 traced_cameras.append([camera, 'unsupported', ''])
 
 
+# Pretty Prints the traced camera data
 def print_list_data():
     global customer_cameras
     global traced_cameras
@@ -136,7 +145,6 @@ def print_list_data():
     for camera_data in traced_cameras:
         camera_name, camera_type, matched_camera = camera_data
         camera_count = str(customer_cameras.get(camera_name, 0))
-
         if isinstance(matched_camera, CompatibleModel):
             output.append([
                 camera_name,
@@ -157,32 +165,28 @@ def print_list_data():
                 '',
                 ''
             ])
-
     # Define a custom sorting key
     def sort_key(item):
         order = {'exact': 0, 'identified': 1, 'potential': 2, 'unsupported': 3}
         return order.get(item[2], 4)  # Default to 4 if type is unknown
-
     # Sort the output list based on the custom sorting key
     output.sort(key=sort_key)
-
     print(tabulate(output, headers=['Camera Name', 'Camera Count', 'Supported Type', 'Manufacturer', 'Model', 'Firmware',
                             'Additional Notes']))
-
     with open('camera_models.txt', 'w') as f:
         f.write(tabulate(output, headers=['Camera Name', 'Camera Count', 'Supported Type', 'Manufacturer', 'Model', 'Firmware',
                             'Additional Notes']))
+
 
 # Verkada Cameras
 verkada_cameras = parse_compatibility_list('Verkada Command Connector Compatibility.csv')
 verkada_cameras_list = get_camera_list(verkada_cameras)
 
 # Customer Cameras
-customer_cameras_raw = read_customer_list('./Camera Compatibility Sheets/Camera Compatibility Sheet 4.csv')
+customer_cameras_raw = read_customer_list('./Camera Compatibility Sheets/Camera Compatibility Sheet.csv')
 customer_cameras = get_camera_count(identify_model_column())
 customer_cameras_list = get_camera_list(customer_cameras)
 
 traced_cameras = []
 camera_match(customer_cameras_list)
 print_list_data()
-print("\n")
