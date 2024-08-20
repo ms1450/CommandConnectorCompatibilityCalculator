@@ -198,7 +198,6 @@ def identify_model_column() -> Optional[int]:
         scores.append(column_score)
     if scores:
         return scores.index(max(scores))
-
     print(
         f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
     )
@@ -261,21 +260,22 @@ def camera_match(list_customer_cameras: List[str]) -> None:
     global traced_cameras
     for camera in list_customer_cameras:
         if camera != "":
-            match, score, _ = process.extractOne(
+            match, score = process.extractOne(
                 camera, verkada_cameras_list, scorer=fuzz.ratio
             )
-            _, sort_score, _ = process.extractOne(
+            _, sort_score = process.extractOne(
                 camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
             )
-            _, set_score, _ = process.extractOne(
+            _, set_score = process.extractOne(
                 camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
             )
+            matched_camera = find_matching_camera(match)  # Get the CompatibleModel object
             if score == 100 or sort_score == 100:
                 traced_cameras.append(
                     (
                         camera,
                         "exact",
-                        get_camera_name(find_matching_camera(camera)),
+                        matched_camera
                     )
                 )
                 list_customer_cameras.remove(camera)
@@ -286,7 +286,7 @@ def camera_match(list_customer_cameras: List[str]) -> None:
                     (
                         camera,
                         "identified",
-                        get_camera_name(find_matching_camera(match)),
+                        matched_camera
                     )
                 )
                 list_customer_cameras.remove(camera)
@@ -295,12 +295,12 @@ def camera_match(list_customer_cameras: List[str]) -> None:
                     (
                         camera,
                         "potential",
-                        get_camera_name(find_matching_camera(match)),
+                        matched_camera
                     )
                 )
                 list_customer_cameras.remove(camera)
             else:
-                traced_cameras.append((camera, "unsupported", ""))
+                traced_cameras.append((camera, "unsupported", None))
 
 
 def print_list_data():
@@ -391,11 +391,13 @@ customer_cameras_raw = read_customer_list(
     "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
 )
 
-if model_column := identify_model_column():
+print(customer_cameras_raw)
+
+if (model_column := identify_model_column()) is not None:
     customer_cameras = get_camera_count(model_column)
     customer_cameras_list = get_camera_list(customer_cameras)
 
-    traced_cameras: List[Tuple[str, str, str]] = []
+    traced_cameras: List[Tuple[str, str, Optional[CompatibleModel]]] = []
     camera_match(customer_cameras_list)
     print_list_data()
 
