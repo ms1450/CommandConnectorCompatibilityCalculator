@@ -57,9 +57,7 @@ class CompatibleModel:
     ):
         self.model_name = model_name
         self.manufacturer = manufacturer
-        self.minimum_supported_firmware_version = (
-            minimum_supported_firmware_version
-        )
+        self.minimum_supported_firmware_version = minimum_supported_firmware_version
         self.notes = notes
         self.channels = 0
 
@@ -198,9 +196,7 @@ def identify_model_column() -> Optional[int]:
         scores.append(column_score)
     if scores:
         return scores.index(max(scores))
-    print(
-        f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
-    )
+    print(f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data.")
     return None
 
 
@@ -269,35 +265,19 @@ def camera_match(list_customer_cameras: List[str]) -> None:
             _, set_score = process.extractOne(
                 camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
             )
-            matched_camera = find_matching_camera(match)  # Get the CompatibleModel object
+            matched_camera = find_matching_camera(
+                match
+            )  # Get the CompatibleModel object
             if score == 100 or sort_score == 100:
-                traced_cameras.append(
-                    (
-                        camera,
-                        "exact",
-                        matched_camera
-                    )
-                )
+                traced_cameras.append((camera, "exact", matched_camera))
                 list_customer_cameras.remove(camera)
                 continue
 
             if set_score == 100:
-                traced_cameras.append(
-                    (
-                        camera,
-                        "identified",
-                        matched_camera
-                    )
-                )
+                traced_cameras.append((camera, "identified", matched_camera))
                 list_customer_cameras.remove(camera)
             elif score >= 80:
-                traced_cameras.append(
-                    (
-                        camera,
-                        "potential",
-                        matched_camera
-                    )
-                )
+                traced_cameras.append((camera, "potential", matched_camera))
                 list_customer_cameras.remove(camera)
             else:
                 traced_cameras.append((camera, "unsupported", None))
@@ -334,9 +314,7 @@ def print_list_data():
                 ]
             )
         else:
-            output.append(
-                [camera_name, camera_count, camera_type, "", "", "", ""]
-            )
+            output.append([camera_name, camera_count, camera_type, "", "", "", ""])
 
     # Define a custom sorting key
     def sort_key(item):
