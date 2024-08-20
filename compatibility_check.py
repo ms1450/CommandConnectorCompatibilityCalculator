@@ -315,3 +315,53 @@ def print_list_data(
     #     writer = csv.writer(f)
     #     writer.writerow(headers)
     #     writer.writerows(output)
+
+def main():
+    """
+    Main function that orchestrates the compatibility check between
+    Verkada cameras and customer cameras. It processes compatibility
+    data, identifies camera models, and outputs the matched results.
+
+    This function reads compatibility data from CSV files, identifies the
+    relevant camera models from the customer's list, and matches them
+    against the Verkada camera list. If a model column is found, it
+    retrieves the camera counts and prints the matched camera data;
+    otherwise, it notifies the user that the model column could not be
+    identified.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+
+    verkada_cameras = parse_compatibility_list(
+        "Verkada Command Connector Compatibility.csv"
+    )
+    verkada_cameras_list = get_camera_list(verkada_cameras)
+
+    customer_cameras_raw = read_customer_list(
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
+    )
+
+    print(customer_cameras_raw)
+
+    model_column = identify_model_column(
+        customer_cameras_raw, verkada_cameras_list
+    )
+    if model_column is not None:
+        customer_cameras = get_camera_count(model_column, customer_cameras_raw)
+        customer_cameras_list = get_camera_list(customer_cameras)
+
+        traced_cameras = camera_match(
+            customer_cameras_list, verkada_cameras_list, verkada_cameras
+        )
+        print_list_data(customer_cameras, traced_cameras)
+    else:
+        print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
+
+
+# Execute if being ran directly
+if __name__ == "__main__":
+    main()
