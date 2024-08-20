@@ -6,28 +6,18 @@ Purpose: Import a list of third-party cameras and return to the terminal
     which cameras are compatible with the cloud connector.
 """
 
-# [ ] TODO: Convert to Pandas
-# [x] TODO: Move away from global variables
-import re
-from dataclasses import dataclass
+import csv
 from typing import Dict, List, Optional, Tuple, Union
 
 import colorama
-import pandas as pd
 from colorama import Fore, Style
 from tabulate import tabulate
 from thefuzz import fuzz, process
 
-from app import log
-import app.calculations as calc
-
 # Initialize colorized output
 colorama.init(autoreset=True)
 
-RETENTION = 30  # Required storage in days
 
-
-@dataclass
 class CompatibleModel:
     """Represents a compatible model with its details.
 
@@ -43,11 +33,23 @@ class CompatibleModel:
             initialized to 0.
     """
 
-    model_name: str
-    manufacturer: str
-    minimum_supported_firmware_version: str
-    notes: str
-    channels: int = 0
+    def __init__(
+        self,
+        model_name: str,
+        manufacturer: str,
+        minimum_supported_firmware_version: str,
+        notes: str,
+    ):
+        self.model_name = model_name
+        self.manufacturer = manufacturer
+        self.minimum_supported_firmware_version = (
+            minimum_supported_firmware_version
+        )
+        self.notes = notes
+        self.channels = 0
+
+    def __str__(self) -> str:
+        return self.model_name
 
 
 def get_camera_list(
@@ -67,29 +69,10 @@ def get_camera_list(
     if isinstance(compatible_models, list):
         return [model.model_name for model in compatible_models]
 
-    if isinstance(compatible_models, dict):
+    elif isinstance(compatible_models, dict):
         return list(compatible_models.keys())
 
     return []
-
-
-def get_manufacturer_list(
-    compatible_models: Union[List[CompatibleModel]],
-) -> set[str]:
-    """Retrieve a set of camera manufacturer names from compatible models.
-
-    Args:
-        compatible_models
-        (Union[List[CompatibleModel]]): A list of model objects.
-
-    Returns:
-        set[str]: A set of camera manufacturer names or an empty set
-            if the input is invalid.
-    """
-    if isinstance(compatible_models, list):
-        return {model.manufacturer.lower() for model in compatible_models}
-    manufacturers: set[str] = set()
-    return manufacturers
 
 
 def find_matching_camera(
@@ -119,94 +102,46 @@ def find_matching_camera(
 def parse_compatibility_list(filename: str) -> List[CompatibleModel]:
     """Parse a CSV file to create a list of compatible models.
 
-    This function reads a specified CSV file, skipping the first five
-    rows, and constructs a list of CompatibleModel objects from the
-    remaining rows. It returns the list of compatible models for further
-    processing.
-
     Args:
         filename (str): The path to the CSV file containing compatibility
             data.
 
     Returns:
-        list: A list of CompatibleModel objects created from the CSV data.
+        List[CompatibleModel]: A list of CompatibleModel objects created
+            from the CSV data.
     """
     compatible_models = []
-    df = pd.read_csv(filename, skiprows=5, header=None, encoding="UTF-8")
-
-    # Read the rest of the rows and create CompatibleModel objects
-    for _, row in df.iterrows():
-        model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
-        compatible_models.append(model)
+    with open(filename, newline="", encoding="UTF-8") as csvfile:
+        reader = csv.reader(csvfile, delimiter=",")
+        # Skip the first 5 rows
+        for _ in range(5):
+            next(reader)
+        # Read the rest of the rows and create CompatibleModel objects
+        for row in reader:
+            model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
+            compatible_models.append(model)
     return compatible_models
 
 
-def read_customer_list(filename: str) -> pd.DataFrame:
+def read_customer_list(filename: str) -> List[List[str]]:
     """Read a CSV file and transpose its rows into columns.
-
-    This function opens a specified CSV file and reads its content,
-    transposing the rows into columns for easier access. It returns a
-    list of lists, where each inner list represents a column from the
-    original CSV data.
 
     Args:
         filename (str): The path to the CSV file containing customer data.
 
     Returns:
-        list: A list of lists, with each inner list representing a column
-            from the CSV file.
+        List[List[str]]: A list of lists, with each inner list
+            representing a column from the CSV file.
     """
-    return pd.read_csv(filename, dtype=str, encoding="UTF-8")
-
-
-def tabulate_data(data: List[List[str]]) -> None:
-    """Tabulate and print the data.
-
-    Args:
-        data (List[List[str]]): Transposed data where each list
-            represents a column.
-    Returns:
-        None
-    """
-    # Extract column names (first element)
-    headers = [
-        f"{Fore.LIGHTBLACK_EX}{row[0]}{Style.RESET_ALL}" for row in data
-    ]
-
-    # Extract data starting from the second element
-    table = [row[1:] for row in data]
-
-    # Pair values off
-    combined_data = list(zip(*table))
-
-    # Print the tabulated data
-    print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
-
-
-def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
-    """Checks if manufacturer name is in the model name, if it is, then
-    the manufacturer name gets removed.
-
-    Args:
-        model_name (str): The name of the model.
-        manufacturers (set[str]): A set of manufacturer names.
-
-    Returns:
-        str: The manufacturer name removed.
-    """
-    if " " not in model_name:
-        return model_name
-    substrings = model_name.split(" ")
-    filtered_substrings = [
-        sub for sub in substrings if sub.lower() not in manufacturers
-    ]
-    return " ".join(filtered_substrings)
+    with open(filename, newline="", encoding="UTF-8") as csvfile:
+        reader = csv.reader(csvfile)
+        # Use zip(*reader) to transpose rows into columns
+        columns = list(zip(*reader))
+    return [list(column) for column in columns]
 
 
 def identify_model_column(
-    customer_cameras_raw: pd.DataFrame,
-    verkada_cameras_list: List[str],
-    manufacturer_list: set[str],
+    customer_cameras_raw: List[List[str]], verkada_cameras_list: List[str]
 ) -> Optional[int]:
     """Identify the column index that best matches camera models.
 
@@ -215,46 +150,36 @@ def identify_model_column(
             transposed into columns.
         verkada_cameras_list (List[str]): List of known Verkada camera
             model names.
-        manufacturer_list (set[str]): Set of manufacturer model names.
 
     Returns:
         Optional[int]: The index of the column with the highest match
             score, or None if no valid scores are found.
     """
-
-    def calculate_column_score(column_data):
+    scores = []
+    for column_data in customer_cameras_raw:
         column_values = set()
         column_score = 0
 
-        for camera in column_data.dropna():  # Remove NaN values
-            if isinstance(camera, str):  # Only process strings
-                camera = manufacturer_removed(
-                    camera.strip(), manufacturer_list
-                )
-                if (
-                    camera and camera not in column_values
-                ):  # Skip empty strings
-                    # Perform fuzzy matching and accumulate the score
-                    score = process.extractOne(
-                        camera,
-                        verkada_cameras_list,
-                        scorer=fuzz.token_sort_ratio,
-                    )[1]
-                    column_score += score
+        for camera in column_data:
+            model_name = camera.strip()
 
-        return column_score
+            if model_name and model_name not in column_values:
+                score = process.extractOne(
+                    model_name,
+                    verkada_cameras_list,
+                    scorer=fuzz.token_sort_ratio,
+                )[1]
+                column_score += score
+                column_values.add(model_name)
 
-    # Apply the score calculation to each column in the DataFrame
-    scores = customer_cameras_raw.apply(calculate_column_score)
+        scores.append(column_score)
 
-    # Get the index of the column with the highest score
-    if not scores.empty and scores.max() > 0:
-        return scores.idxmax()
+    if scores:
+        return scores.index(max(scores))
 
-    log.warning(
-        "%sNo valid scores found.%s Check your input data.",
-        Fore.RED,
-        Style.RESET_ALL,
+    print(
+        f"{Fore.RED}No valid scores found."
+        f"{Style.RESET_ALL} Check your input data."
     )
     return None
 
@@ -266,7 +191,7 @@ def get_camera_count(
 
     Args:
         column_number (int): The index of the column to analyze.
-        customer_cameras_raw (Pandas.DataFrame): Raw customer camera data
+        customer_cameras_raw (List[List[str]]): Raw customer camera data
             transposed into columns.
 
     Returns:
@@ -275,38 +200,16 @@ def get_camera_count(
     """
     camera_statistics: Dict[str, int] = {}
     for value in customer_cameras_raw[column_number]:
-        value = str(value).strip()
+        value = value.strip()
         if value and "model" not in value.lower():
             camera_statistics[value] = camera_statistics.get(value, 0) + 1
     return camera_statistics
-
-
-def strip_ansi_codes(text: str) -> str:
-    """
-    Removes ANSI escape codes from a given text string. This function is
-    useful for cleaning up text that may contain formatting codes,
-    ensuring that the output is plain and readable.
-
-    The function uses a regular expression to identify and strip out ANSI
-    codes, which are often used for terminal text formatting. The result
-    is a clean string without any formatting artifacts.
-
-    Args:
-        text (str): The input string potentially containing ANSI escape
-            codes.
-
-    Returns:
-        str: The cleaned string with ANSI codes removed.
-    """
-
-    return re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]").sub("", text)
 
 
 def camera_match(
     list_customer_cameras: List[str],
     verkada_cameras_list: List[str],
     verkada_cameras: List[CompatibleModel],
-    manufacturer_list: set[str],
 ) -> List[Tuple[str, str, Optional[CompatibleModel]]]:
     """Match customer cameras against a list of known Verkada cameras.
 
@@ -317,7 +220,6 @@ def camera_match(
             names.
         verkada_cameras (List[CompatibleModel]): A list of CompatibleModel
             objects.
-        manufacturer_list (set[str]): A set of manufacturer model
 
     Returns:
         List[Tuple[str, str, Optional[CompatibleModel]]]: A list of tuples
@@ -332,50 +234,31 @@ def camera_match(
 
     for camera in list_customer_cameras:
         if camera:
-            camera_model = manufacturer_removed(camera, manufacturer_list)
             match, score = process.extractOne(
-                camera_model, verkada_cameras_list, scorer=fuzz.ratio
+                camera, verkada_cameras_list, scorer=fuzz.ratio
             )
             _, sort_score = process.extractOne(
-                camera_model,
-                verkada_cameras_list,
-                scorer=fuzz.token_sort_ratio,
+                camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
             )
             _, set_score = process.extractOne(
-                camera_model, verkada_cameras_list, scorer=fuzz.token_set_ratio
+                camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
             )
 
             if score == 100 or sort_score == 100:
-                traced_cameras.append(
-                    (
-                        camera,
-                        f"{Fore.GREEN}exact{Style.RESET_ALL}",
-                        get_camera_obj(match),
-                    )
-                )
+                traced_cameras.append((camera, "exact", get_camera_obj(match)))
                 list_customer_cameras.remove(camera)
             elif set_score == 100:
                 traced_cameras.append(
-                    (
-                        camera,
-                        f"{Fore.CYAN}identified{Style.RESET_ALL}",
-                        get_camera_obj(match),
-                    )
+                    (camera, "identified", get_camera_obj(match))
                 )
                 list_customer_cameras.remove(camera)
             elif score >= 80:
                 traced_cameras.append(
-                    (
-                        camera,
-                        f"{Fore.YELLOW}potential{Style.RESET_ALL}",
-                        get_camera_obj(match),
-                    )
+                    (camera, "potential", get_camera_obj(match))
                 )
                 list_customer_cameras.remove(camera)
             else:
-                traced_cameras.append(
-                    (camera, f"{Fore.RED}unsupported{Style.RESET_ALL}", None)
-                )
+                traced_cameras.append((camera, "unsupported", None))
 
     return traced_cameras
 
@@ -399,7 +282,6 @@ def print_list_data(
     for camera_name, camera_type, matched_camera in traced_cameras:
         camera_count = str(customer_cameras.get(camera_name, 0))
 
-        # Append values to output table
         output.append(
             [
                 camera_name,
@@ -416,18 +298,7 @@ def print_list_data(
             ]
         )
 
-    # Create table headers
-    color_headers = [
-        f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Model{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Min Firmware Version{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
-    ]
-
-    plain_headers = [
+    headers = [
         "Camera Name",
         "Count",
         "Match Type",
@@ -436,119 +307,11 @@ def print_list_data(
         "Min Firmware Version",
         "Notes",
     ]
-    # Sort alphabetically
-    output.sort(key=lambda x: x[2], reverse=True)
 
-    # Print table in pretty format
-    print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
+    print(tabulate(output, headers=headers, tablefmt="fancy_grid"))
 
-    # Convert to Pandas DataFrame
-    df = pd.DataFrame(
-        output,
-        columns=plain_headers,
-    )
-    # Strip color codes
-    df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
-
-    # NOTE: Uncomment to write truncated to terminal
-    # print(df.head())
-
-    # NOTE: Uncomment to write to html file
-    # df.to_html("camera_models.html", index=False)
-
-    # NOTE: Uncomment to write output to a csv
-    # with open("camera_models.txt", "w", encoding="UTF-8") as f:
-    #     f.write(
-    #         tabulate(
-    #             df.values.tolist(), headers=plain_headers, tablefmt="simple"
-    #         )
-    #     )
-
-
-def recommend_connectors(customer_cameras: Dict[str, int]):
-    """
-    Generate connector recommendations based on customer camera data and
-    model specifications. This function processes camera counts and
-    calculates the required storage for both low and high megapixel
-    channels.
-
-    Args:
-        customer_cameras (Dict[str, int]): A list of customer cameras and
-            the count of each model.
-
-    Returns:
-        None: This function does not return a value but triggers the
-            recommendation process for connectors.
-
-    Examples:
-        >>> recommend_connectors('model_column_name', raw_camera_data)
-    """
-    low_mp_count = calc.count_low_mp_channels(customer_cameras)
-    low_storage = calc.calculate_low_mp_storage(low_mp_count, RETENTION)
-
-    high_mp_count = calc.count_high_mp_channels(customer_cameras)
-    high_storage = calc.calculate_4k_storage(high_mp_count, RETENTION)
-
-    total_storage = low_storage + high_storage
-    calc.recommend_connector(low_mp_count, high_mp_count, total_storage)
-
-
-def main():
-    """
-    Main function that orchestrates the compatibility check between
-    Verkada cameras and customer cameras. It processes compatibility
-    data, identifies camera models, and outputs the matched results.
-
-    This function reads compatibility data from CSV files, identifies the
-    relevant camera models from the customer's list, and matches them
-    against the Verkada camera list. If a model column is found, it
-    retrieves the camera counts and prints the matched camera data;
-    otherwise, it notifies the user that the model column could not be
-    identified.
-
-    Args:
-        None
-
-    Returns:
-        None
-    """
-
-    verkada_cameras = parse_compatibility_list(
-        "Verkada Command Connector Compatibility.csv"
-    )
-    verkada_cameras_list = get_camera_list(verkada_cameras)
-    manufacturers = get_manufacturer_list(verkada_cameras)
-
-    customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
-    )
-
-    # NOTE: Uncomment to print raw csv
-    # tabulate_data(
-    #     [customer_cameras_raw.columns.tolist()]
-    #     + customer_cameras_raw.T.values.tolist()
-    # )
-
-    model_column = identify_model_column(
-        customer_cameras_raw, verkada_cameras_list, manufacturers
-    )
-    if model_column is not None:
-        customer_cameras = get_camera_count(model_column, customer_cameras_raw)
-        customer_cameras_list = get_camera_list(customer_cameras)
-        recommend_connectors(customer_cameras)
-        traced_cameras = camera_match(
-            customer_cameras_list,
-            verkada_cameras_list,
-            verkada_cameras,
-            manufacturers,
-        )
-        print_list_data(customer_cameras, traced_cameras)
-    else:
-        log.critical(
-            "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
-        )
-
-
-# Execute if being ran directly
-if __name__ == "__main__":
-    main()
+    # Optionally, save to file (uncomment and adjust if needed)
+    # with open("camera_matches.csv", "w", newline="", encoding="UTF-8") as f:
+    #     writer = csv.writer(f)
+    #     writer.writerow(headers)
+    #     writer.writerows(output)
