@@ -140,6 +140,34 @@ def read_customer_list(filename: str) -> List[List[str]]:
     return [list(column) for column in columns]
 
 
+def tabulate_data(data: List[List[str]]) -> None:
+    """Tabulate and print the data.
+
+    Args:
+        data (List[List[str]]): Transposed data where each list
+            represents a column.
+    Returns:
+        None
+    """
+    #! Assuming the columns are in order
+    camera_models, direct_comparison, recommended_replacement = data
+
+    # Pair values off
+    combined_data = list(
+        zip(camera_models, direct_comparison, recommended_replacement)
+    )
+
+    # Define headers *REQUIRED*
+    headers = [
+        f"{Fore.LIGHTBLACK_EX}Camera Model{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Direct Comparison{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Recommended Replacement{Style.RESET_ALL}",
+    ]
+
+    # Print the tabulated data
+    print(tabulate(combined_data, headers=headers, tablefmt="fancy_grid"))
+
+
 def identify_model_column(
     customer_cameras_raw: List[List[str]], verkada_cameras_list: List[str]
 ) -> Optional[int]:
@@ -245,20 +273,36 @@ def camera_match(
             )
 
             if score == 100 or sort_score == 100:
-                traced_cameras.append((camera, "exact", get_camera_obj(match)))
+                traced_cameras.append(
+                    (
+                        camera,
+                        f"{Fore.GREEN}exact{Style.RESET_ALL}",
+                        get_camera_obj(match),
+                    )
+                )
                 list_customer_cameras.remove(camera)
             elif set_score == 100:
                 traced_cameras.append(
-                    (camera, "identified", get_camera_obj(match))
+                    (
+                        camera,
+                        f"{Fore.CYAN}identified{Style.RESET_ALL}",
+                        get_camera_obj(match),
+                    )
                 )
                 list_customer_cameras.remove(camera)
             elif score >= 80:
                 traced_cameras.append(
-                    (camera, "potential", get_camera_obj(match))
+                    (
+                        camera,
+                        f"{Fore.YELLOW}potential{Style.RESET_ALL}",
+                        get_camera_obj(match),
+                    )
                 )
                 list_customer_cameras.remove(camera)
             else:
-                traced_cameras.append((camera, "unsupported", None))
+                traced_cameras.append(
+                    (camera, f"{Fore.RED}unsupported{Style.RESET_ALL}", None)
+                )
 
     return traced_cameras
 
@@ -282,6 +326,7 @@ def print_list_data(
     for camera_name, camera_type, matched_camera in traced_cameras:
         camera_count = str(customer_cameras.get(camera_name, 0))
 
+        # Append values to output table
         output.append(
             [
                 camera_name,
@@ -298,16 +343,21 @@ def print_list_data(
             ]
         )
 
+    # Create table headers
     headers = [
-        "Camera Name",
-        "Count",
-        "Match Type",
-        "Manufacturer",
-        "Model",
-        "Min Firmware Version",
-        "Notes",
+        f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Model{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Min Firmware Version{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
     ]
 
+    # Sort alphabetically
+    output.sort(key=lambda x: x[2], reverse=True)
+
+    # Print table in pretty format
     print(tabulate(output, headers=headers, tablefmt="fancy_grid"))
 
     # Optionally, save to file (uncomment and adjust if needed)
@@ -315,6 +365,7 @@ def print_list_data(
     #     writer = csv.writer(f)
     #     writer.writerow(headers)
     #     writer.writerows(output)
+
 
 def main():
     """
@@ -345,7 +396,7 @@ def main():
         "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
     )
 
-    print(customer_cameras_raw)
+    tabulate_data(customer_cameras_raw)
 
     model_column = identify_model_column(
         customer_cameras_raw, verkada_cameras_list
