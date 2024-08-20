@@ -6,9 +6,9 @@ This script analyzes CSV files containing third-party camera models and compares
 
 ### Features
 
-    - **Exact Match Detection**: Identifies camera models that match exactly with Command Connector-compatible models.
-    - **Identification of Similar Models**: Recognizes models even when their names are slightly different.
-    - **Potential Matches**: Suggests potential matches for models that are similar but not exact.
+- **Exact Match Detection**: Identifies camera models that match exactly with Command Connector-compatible models.
+- **Identification of Similar Models**: Recognizes models even when their names are slightly different.
+- **Potential Matches**: Suggests potential matches for models that are similar but not exact.
 
 ## Purpose
 
