@@ -6,6 +6,8 @@ Purpose: Import a list of third-party cameras and return to the terminal
     which cameras are compatible with the cloud connector.
 """
 
+# [ ] TODO: Convert to Pandas
+# [x] TODO: Move away from global variables
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
@@ -257,31 +259,8 @@ def identify_model_column(
     return None
 
 
-def find_count_column(df: pd.DataFrame) -> Optional[int]:
-    """Find the column index for count data using regex
-
-    Args:
-        df (Pandas.DataFrame): The DataFrame to search.
-
-    Returns:
-        Optional[int]: The index of the count column, or None if not
-            present.
-    """
-    # Case-insensitive pattern to search
-    count_column_pattern = re.compile(r"(?i)\bcount\b|#|\bquantity\b")
-
-    return next(
-        (
-            i
-            for i, col in enumerate(df.columns)
-            if isinstance(col, str) and count_column_pattern.match(col)
-        ),
-        None,
-    )
-
-
 def get_camera_count(
-    column_number: int, customer_cameras_raw: pd.DataFrame
+    column_number: int, customer_cameras_raw: List[List[str]]
 ) -> Dict[str, int]:
     """Count the occurrences of camera names in a specified column.
 
@@ -294,23 +273,7 @@ def get_camera_count(
         Dict[str, int]: A dictionary containing camera names as keys and
             their occurrence counts as values.
     """
-    # Check if count column exists
-    count_column_index = find_count_column(customer_cameras_raw)
     camera_statistics: Dict[str, int] = {}
-    if count_column_index is not None:
-        count_data = customer_cameras_raw.iloc[:, count_column_index]
-        camera_statistics = dict(
-            zip(customer_cameras_raw.iloc[:, 0], count_data)
-        )
-        # Ensure the counts are integers and handle missing value cases
-        return {
-            str(name).strip(): 0 if pd.isna(i) or i == "nan" else int(i)
-            for name, i in camera_statistics.items()
-            if name
-        }
-
-    # Default to counting cameras by name
-    customer_cameras_raw.T.values.tolist()
     for value in customer_cameras_raw[column_number]:
         value = str(value).strip()
         if value and "model" not in value.lower():
