@@ -29,7 +29,7 @@ class process:
         scorer: Callable[[str, str], int] = ...,
         processor: Callable[[str], str] = ...,
         limit: int = ...,
-    ) -> List[Tuple[str, int, int]]: ...
+    ) -> List[Tuple[str, int]]: ...
     @staticmethod
     def extractOne(
         query: str,
@@ -37,4 +37,4 @@ class process:
         scorer: Callable[[str, str], int] = ...,
         processor: Callable[[str], str] = ...,
         score_cutoff: int = ...,
-    ) -> Tuple[str, int, int]: ...
+    ) -> Tuple[str, int]: ...

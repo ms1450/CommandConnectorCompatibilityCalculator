@@ -7,7 +7,7 @@ Purpose: Import a list of third-party cameras and return to the terminal
 """
 
 # [ ] TODO: Convert to Pandas
-# [ ] TODO: Move away from global variables
+# [x] TODO: Move away from global variables
 import csv
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -89,7 +89,9 @@ def get_camera_list(compatible_models: Union[List, Dict]) -> List[str]:
         return list(compatible_models.keys())
 
 
-def find_matching_camera(camera_name: str):
+def find_matching_camera(
+    camera_name: str, verkada_cameras: List[CompatibleModel]
+):
     """Find a matching camera by its name.
 
     This function searches for a camera in the global list of Verkada
@@ -103,7 +105,6 @@ def find_matching_camera(camera_name: str):
         object or None: The matching camera object if found, otherwise
             None.
     """
-    global verkada_cameras
     return next(
         (
             camera
@@ -165,7 +166,10 @@ def read_customer_list(filename: str) -> List[List[str]]:
     return [list(column) for column in columns]
 
 
-def identify_model_column() -> Optional[int]:
+def identify_model_column(
+    customer_cameras_raw: List[List[str]],
+    verkada_cameras_list: List[CompatibleModel],
+) -> Optional[int]:
     """Identify the column index that best matches camera models.
 
     This function evaluates each column of raw customer camera data
@@ -177,34 +181,47 @@ def identify_model_column() -> Optional[int]:
         int or None: The index of the column with the highest match score,
             or None if no valid scores are found.
     """
-    global customer_cameras_raw
-    global verkada_cameras_list
+    # Convert Verkada camera list to a list of model names
+    verkada_model_names = [
+        camera.model_name for camera in verkada_cameras_list
+    ]
+
     scores = []
     for column_data in customer_cameras_raw:
         column_values = []
         column_score = 0
-        for value in column_data:
-            if value in column_values:
-                column_values.append(value)
+
+        for camera in column_data:
+            model_name = camera
+
+            if model_name in column_values:
+                continue
             elif (
-                value.strip()
+                model_name.strip()
             ):  # Check if value is not empty after stripping whitespace
+                # Match the model name against the Verkada model names
                 score = process.extractOne(
-                    value,
-                    verkada_cameras_list,
+                    model_name,
+                    verkada_model_names,
                     scorer=fuzz.token_sort_ratio,
                 )[1]
                 column_score += score
+                column_values.append(model_name)
+
         scores.append(column_score)
+
     if scores:
         return scores.index(max(scores))
+
     print(
         f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
     )
     return None
 
 
-def get_camera_count(column_number: int) -> Dict[str, int]:
+def get_camera_count(
+    column_number: int, customer_cameras_raw: List[List[str]]
+) -> Dict[str, int]:
     """Count the occurrences of camera names in a specified column.
 
     This function analyzes a specific column of customer camera data,
@@ -219,7 +236,6 @@ def get_camera_count(column_number: int) -> Dict[str, int]:
         dict: A dictionary containing camera names as keys and their
             occurrence counts as values.
     """
-    global customer_cameras_raw
     camera_statistics = {}
     for value in customer_cameras_raw[column_number]:
         # Skip this value if it contains 'model' (case-insensitive)
@@ -235,7 +251,11 @@ def get_camera_count(column_number: int) -> Dict[str, int]:
     return camera_statistics
 
 
-def camera_match(list_customer_cameras: List[str]) -> None:
+def camera_match(
+    list_customer_cameras: List[str],
+    verkada_cameras_list: List[str],
+    verkada_cameras: List[CompatibleModel],
+) -> List[Tuple[str, str, str]]:
     """Match customer cameras against a list of known Verkada cameras.
 
     This function evaluates a list of customer camera names, attempting
@@ -256,8 +276,8 @@ def camera_match(list_customer_cameras: List[str]) -> None:
     def get_camera_name(camera_obj: Optional[CompatibleModel]) -> str:
         return camera_obj.model_name if camera_obj is not None else ""
 
-    global verkada_cameras_list
-    global traced_cameras
+    traced_cameras = []
+
     for camera in list_customer_cameras:
         if camera != "":
             match, score = process.extractOne(
@@ -269,25 +289,51 @@ def camera_match(list_customer_cameras: List[str]) -> None:
             _, set_score = process.extractOne(
                 camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
             )
-            matched_camera = find_matching_camera(
-                match
-            )  # Get the CompatibleModel object
             if score == 100 or sort_score == 100:
-                traced_cameras.append((camera, "exact", matched_camera))
+                traced_cameras.append(
+                    (
+                        camera,
+                        "exact",
+                        get_camera_name(
+                            find_matching_camera(camera, verkada_cameras)
+                        ),
+                    )
+                )
                 list_customer_cameras.remove(camera)
                 continue
 
             if set_score == 100:
-                traced_cameras.append((camera, "identified", matched_camera))
+                traced_cameras.append(
+                    (
+                        camera,
+                        "identified",
+                        get_camera_name(
+                            find_matching_camera(match, verkada_cameras)
+                        ),
+                    )
+                )
                 list_customer_cameras.remove(camera)
             elif score >= 80:
-                traced_cameras.append((camera, "potential", matched_camera))
+                traced_cameras.append(
+                    (
+                        camera,
+                        "potential",
+                        get_camera_name(
+                            find_matching_camera(match, verkada_cameras)
+                        ),
+                    )
+                )
                 list_customer_cameras.remove(camera)
             else:
-                traced_cameras.append((camera, "unsupported", None))
+                traced_cameras.append((camera, "unsupported", ""))
+
+    return traced_cameras
 
 
-def print_list_data():
+def print_list_data(
+    customer_cameras: Dict[str, int],
+    traced_cameras: List[Tuple[str, str, str]],
+):
     """Print and save a formatted list of camera data.
 
     This function compiles data from the global lists of traced cameras
@@ -299,8 +345,6 @@ def print_list_data():
         None: The function outputs the formatted data to the console and
         writes it to a file named "camera_models.txt".
     """
-    global customer_cameras
-    global traced_cameras
     output = []
     for camera_data in traced_cameras:
         camera_name, camera_type, matched_camera = camera_data
@@ -364,26 +408,52 @@ def print_list_data():
         )
 
 
-# Verkada Cameras
-verkada_cameras = parse_compatibility_list(
-    "Verkada Command Connector Compatibility.csv"
-)
-verkada_cameras_list = get_camera_list(verkada_cameras)
+def main():
+    """
+    Main function that orchestrates the compatibility check between
+    Verkada cameras and customer cameras. It processes compatibility
+    data, identifies camera models, and outputs the matched results.
 
-# Customer Cameras
-customer_cameras_raw = read_customer_list(
-    "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
-)
+    This function reads compatibility data from CSV files, identifies the
+    relevant camera models from the customer's list, and matches them
+    against the Verkada camera list. If a model column is found, it
+    retrieves the camera counts and prints the matched camera data;
+    otherwise, it notifies the user that the model column could not be
+    identified.
 
-print(customer_cameras_raw)
+    Args:
+        None
 
-if (model_column := identify_model_column()) is not None:
-    customer_cameras = get_camera_count(model_column)
-    customer_cameras_list = get_camera_list(customer_cameras)
+    Returns:
+        None
+    """
 
-    traced_cameras: List[Tuple[str, str, Optional[CompatibleModel]]] = []
-    camera_match(customer_cameras_list)
-    print_list_data()
+    verkada_cameras = parse_compatibility_list(
+        "Verkada Command Connector Compatibility.csv"
+    )
+    verkada_cameras_list = [
+        camera.model_name for camera in get_camera_list(verkada_cameras)
+    ]
 
-else:
-    print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
+    customer_cameras_raw = read_customer_list(
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
+    )
+
+    model_column = identify_model_column(
+        customer_cameras_raw, verkada_cameras_list
+    )
+    if model_column is not None:
+        customer_cameras = get_camera_count(model_column, customer_cameras_raw)
+        customer_cameras_list = get_camera_list(customer_cameras)
+
+        traced_cameras = camera_match(
+            customer_cameras_list, verkada_cameras_list, verkada_cameras
+        )
+        print_list_data(customer_cameras, traced_cameras)
+    else:
+        print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
+
+
+# Execute if being ran directly
+if __name__ == "__main__":
+    main()
