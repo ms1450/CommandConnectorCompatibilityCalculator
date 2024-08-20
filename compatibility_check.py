@@ -190,7 +190,6 @@ def identify_model_column(
 
     if scores:
         return scores.index(max(scores))
-
     print(
         f"{Fore.RED}No valid scores found."
         f"{Style.RESET_ALL} Check your input data."
