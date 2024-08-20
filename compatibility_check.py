@@ -57,7 +57,9 @@ class CompatibleModel:
     ):
         self.model_name = model_name
         self.manufacturer = manufacturer
-        self.minimum_supported_firmware_version = minimum_supported_firmware_version
+        self.minimum_supported_firmware_version = (
+            minimum_supported_firmware_version
+        )
         self.notes = notes
         self.channels = 0
 
@@ -196,7 +198,9 @@ def identify_model_column() -> Optional[int]:
         scores.append(column_score)
     if scores:
         return scores.index(max(scores))
-    print(f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data.")
+    print(
+        f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
+    )
     return None
 
 
@@ -314,7 +318,9 @@ def print_list_data():
                 ]
             )
         else:
-            output.append([camera_name, camera_count, camera_type, "", "", "", ""])
+            output.append(
+                [camera_name, camera_count, camera_type, "", "", "", ""]
+            )
 
     # Define a custom sorting key
     def sort_key(item):
