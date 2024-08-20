@@ -439,6 +439,8 @@ def main():
         "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
     )
 
+    print(customer_cameras_raw)
+
     model_column = identify_model_column(
         customer_cameras_raw, verkada_cameras_list
     )
