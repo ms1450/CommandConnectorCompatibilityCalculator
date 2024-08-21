@@ -43,7 +43,7 @@ class CompatibleModel:
 
 
 def get_camera_list(
-        compatible_models: Union[List[CompatibleModel], Dict[str, CompatibleModel]]
+    compatible_models: Union[List[CompatibleModel], Dict[str, CompatibleModel]]
 ) -> List[str]:
     """Retrieve a list of camera names from compatible models.
 
@@ -66,17 +66,17 @@ def get_camera_list(
 
 
 def get_manufacturer_list(
-        compatible_models: Union[List[CompatibleModel]]
+    compatible_models: Union[List[CompatibleModel]],
 ) -> set[str]:
     """Retrieve a set of camera manufacturer names from compatible models.
 
-        Args:
-            compatible_models
-            (Union[List[CompatibleModel]]): A list of model objects.
+    Args:
+        compatible_models
+        (Union[List[CompatibleModel]]): A list of model objects.
 
-        Returns:
-            set[str]: A set of camera manufacturer names or an empty set
-                if the input is invalid.
+    Returns:
+        set[str]: A set of camera manufacturer names or an empty set
+            if the input is invalid.
     """
     manufacturers: set[str] = set()
     if isinstance(compatible_models, list):
@@ -85,7 +85,7 @@ def get_manufacturer_list(
 
 
 def find_matching_camera(
-        camera_name: str, verkada_cameras: List[CompatibleModel]
+    camera_name: str, verkada_cameras: List[CompatibleModel]
 ) -> Optional[CompatibleModel]:
     """Find a matching camera by its name.
 
@@ -183,17 +183,21 @@ def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
     Returns:
         str: The manufacturer name removed.
     """
-    if ' ' in model_name:
-        substrings = model_name.split(' ')
-        filtered_substrings = [sub for sub in substrings if sub not in manufacturers]
-        remaining_string = ' '.join(filtered_substrings)
+    if " " in model_name:
+        substrings = model_name.split(" ")
+        filtered_substrings = [
+            sub for sub in substrings if sub not in manufacturers
+        ]
+        remaining_string = " ".join(filtered_substrings)
         return remaining_string
     else:
         return model_name
 
 
 def identify_model_column(
-        customer_cameras_raw: List[List[str]], verkada_cameras_list: List[str], manufacturer_list: set[str]
+    customer_cameras_raw: List[List[str]],
+    verkada_cameras_list: List[str],
+    manufacturer_list: set[str],
 ) -> Optional[int]:
     """Identify the column index that best matches camera models.
 
@@ -214,7 +218,9 @@ def identify_model_column(
         column_score = 0
 
         for camera in column_data:
-            model_name = manufacturer_removed(camera.strip(), manufacturer_list)
+            model_name = manufacturer_removed(
+                camera.strip(), manufacturer_list
+            )
             if model_name and model_name not in column_values:
                 score = process.extractOne(
                     model_name,
@@ -237,7 +243,7 @@ def identify_model_column(
 
 
 def get_camera_count(
-        column_number: int, customer_cameras_raw: List[List[str]]
+    column_number: int, customer_cameras_raw: List[List[str]]
 ) -> Dict[str, int]:
     """Count the occurrences of camera names in a specified column.
 
@@ -259,10 +265,10 @@ def get_camera_count(
 
 
 def camera_match(
-        list_customer_cameras: List[str],
-        verkada_cameras_list: List[str],
-        verkada_cameras: List[CompatibleModel],
-        manufacturer_list: set[str]
+    list_customer_cameras: List[str],
+    verkada_cameras_list: List[str],
+    verkada_cameras: List[CompatibleModel],
+    manufacturer_list: set[str],
 ) -> List[Tuple[str, str, Optional[CompatibleModel]]]:
     """Match customer cameras against a list of known Verkada cameras.
 
@@ -293,7 +299,9 @@ def camera_match(
                 camera_model, verkada_cameras_list, scorer=fuzz.ratio
             )
             _, sort_score = process.extractOne(
-                camera_model, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+                camera_model,
+                verkada_cameras_list,
+                scorer=fuzz.token_sort_ratio,
             )
             _, set_score = process.extractOne(
                 camera_model, verkada_cameras_list, scorer=fuzz.token_set_ratio
@@ -335,8 +343,8 @@ def camera_match(
 
 
 def print_list_data(
-        customer_cameras: Dict[str, int],
-        traced_cameras: List[Tuple[str, str, Optional[CompatibleModel]]],
+    customer_cameras: Dict[str, int],
+    traced_cameras: List[Tuple[str, str, Optional[CompatibleModel]]],
 ):
     """Print and save a formatted list of camera data.
 
@@ -433,7 +441,10 @@ def main():
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
         traced_cameras = camera_match(
-            customer_cameras_list, verkada_cameras_list, verkada_cameras, manufacturers
+            customer_cameras_list,
+            verkada_cameras_list,
+            verkada_cameras,
+            manufacturers,
         )
         print_list_data(customer_cameras, traced_cameras)
     else:
