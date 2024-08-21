@@ -130,7 +130,7 @@ def read_customer_list(filename: str) -> pd.DataFrame:
         list: A list of lists, with each inner list representing a column
             from the CSV file.
     """
-    return pd.read_csv(filename, header=None, encoding="UTF-8")
+    return pd.read_csv(filename, encoding="UTF-8")
 
 
 def tabulate_data(data: List[List[str]]) -> None:
@@ -174,14 +174,19 @@ def identify_model_column(
     """
 
     def calculate_column_score(column_data):
-        column_values = column_data.dropna().str.strip().unique()
-        return sum(
-            process.extractOne(
-                model_name, verkada_cameras_list, scorer=fuzz.token_sort_ratio
-            )[1]
-            for model_name in column_values
-            if model_name
-        )
+        column_score = 0
+
+        for camera in column_data.dropna():  # Remove NaN values
+            if isinstance(camera, str):  # Only process strings
+                camera = camera.strip()
+                if camera:  # Skip empty strings
+                    # Perform fuzzy matching and accumulate the score
+                    score = process.extractOne(
+                        camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+                    )[1]
+                    column_score += score
+
+        return column_score
 
     # Apply the score calculation to each column in the DataFrame
     scores = customer_cameras_raw.apply(calculate_column_score)
@@ -196,21 +201,60 @@ def identify_model_column(
     return None
 
 
+def find_count_column(df: pd.DataFrame) -> Optional[int]:
+    """Find the column index for count data using regex
+
+    Args:
+        df (Pandas.DataFrame): The DataFrame to search.
+
+    Returns:
+        Optional[int]: The index of the count column, or None if not
+            present.
+    """
+    # Case-insensitive pattern to search
+    count_column_pattern = re.compile(r"(?i)count.*")
+
+    return next(
+        (
+            i
+            for i, col in enumerate(df.columns)
+            if isinstance(col, str) and count_column_pattern.match(col)
+        ),
+        None,
+    )
+
+
 def get_camera_count(
-    column_number: int, customer_cameras_raw: List[List[str]]
+    column_number: int, customer_cameras_raw: pd.DataFrame
 ) -> Dict[str, int]:
     """Count the occurrences of camera names in a specified column.
 
     Args:
         column_number (int): The index of the column to analyze.
-        customer_cameras_raw (List[List[str]]): Raw customer camera data
+        customer_cameras_raw (Pandas.DataFrame): Raw customer camera data
             transposed into columns.
 
     Returns:
         Dict[str, int]: A dictionary containing camera names as keys and
             their occurrence counts as values.
     """
+    # Check if count column exists
+    count_column_index = find_count_column(customer_cameras_raw)
     camera_statistics: Dict[str, int] = {}
+    if count_column_index is not None:
+        count_data = customer_cameras_raw.iloc[:, count_column_index]
+        camera_statistics = dict(
+            zip(customer_cameras_raw.iloc[:, 0], count_data)
+        )
+        # Ensure the counts are integers and handle missing value cases
+        return {
+            name.strip(): 0 if pd.isna(i) else int(i)
+            for name, i in camera_statistics.items()
+            if name
+        }
+
+    # Default to counting cameras by name
+    customer_cameras_raw.T.values.tolist()
     for value in customer_cameras_raw[column_number]:
         value = value.strip()
         if value and "model" not in value.lower():
