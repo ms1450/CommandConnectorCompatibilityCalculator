@@ -6,11 +6,11 @@ Purpose: Import a list of third-party cameras and return to the terminal
     which cameras are compatible with the cloud connector.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 import colorama
-import re
 import pandas as pd
 from colorama import Fore, Style
 from tabulate import tabulate
@@ -115,7 +115,7 @@ def parse_compatibility_list(filename: str) -> List[CompatibleModel]:
     return compatible_models
 
 
-def read_customer_list(filename: str) -> List[List[str]]:
+def read_customer_list(filename: str) -> pd.DataFrame:
     """Read a CSV file and transpose its rows into columns.
 
     This function opens a specified CSV file and reads its content,
@@ -130,9 +130,7 @@ def read_customer_list(filename: str) -> List[List[str]]:
         list: A list of lists, with each inner list representing a column
             from the CSV file.
     """
-    return pd.read_csv(
-        filename, header=None, encoding="UTF-8"
-    ).T.values.tolist()
+    return pd.read_csv(filename, header=None, encoding="UTF-8")
 
 
 def tabulate_data(data: List[List[str]]) -> None:
@@ -160,7 +158,7 @@ def tabulate_data(data: List[List[str]]) -> None:
 
 
 def identify_model_column(
-    customer_cameras_raw: List[List[str]], verkada_cameras_list: List[str]
+    customer_cameras_raw: pd.DataFrame, verkada_cameras_list: List[str]
 ) -> Optional[int]:
     """Identify the column index that best matches camera models.
 
@@ -174,31 +172,26 @@ def identify_model_column(
         Optional[int]: The index of the column with the highest match
             score, or None if no valid scores are found.
     """
-    scores = []
-    for column_data in customer_cameras_raw:
-        column_values = set()
-        column_score = 0
 
-        for camera in column_data:
-            model_name = camera.strip()
+    def calculate_column_score(column_data):
+        column_values = column_data.dropna().str.strip().unique()
+        return sum(
+            process.extractOne(
+                model_name, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+            )[1]
+            for model_name in column_values
+            if model_name
+        )
 
-            if model_name and model_name not in column_values:
-                score = process.extractOne(
-                    model_name,
-                    verkada_cameras_list,
-                    scorer=fuzz.token_sort_ratio,
-                )[1]
-                column_score += score
-                column_values.add(model_name)
+    # Apply the score calculation to each column in the DataFrame
+    scores = customer_cameras_raw.apply(calculate_column_score)
 
-        scores.append(column_score)
-
-    if scores:
-        return scores.index(max(scores))
+    # Get the index of the column with the highest score
+    if not scores.empty and scores.max() > 0:
+        return scores.idxmax()
 
     print(
-        f"{Fore.RED}No valid scores found."
-        f"{Style.RESET_ALL} Check your input data."
+        f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
     )
     return None
 
@@ -389,19 +382,19 @@ def print_list_data(
     # Strip color codes
     df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
 
-    # Uncomment to write truncated to terminal
+    # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
 
-    # Uncomment to write to html file
+    # NOTE: Uncomment to write to html file
     # df.to_html("camera_models.html", index=False)
 
-    # Uncomment to write output to a csv
-    with open("camera_models.txt", "w", encoding="UTF-8") as f:
-        f.write(
-            tabulate(
-                df.values.tolist(), headers=plain_headers, tablefmt="simple"
-            )
-        )
+    # NOTE: Uncomment to write output to a csv
+    # with open("camera_models.txt", "w", encoding="UTF-8") as f:
+    #     f.write(
+    #         tabulate(
+    #             df.values.tolist(), headers=plain_headers, tablefmt="simple"
+    #         )
+    #     )
 
 
 def main():
@@ -430,9 +423,10 @@ def main():
     verkada_cameras_list = get_camera_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet 6.csv"
     )
 
+    # NOTE: Uncomment to print raw csv
     # tabulate_data(customer_cameras_raw)
 
     model_column = identify_model_column(
