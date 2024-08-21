@@ -182,7 +182,9 @@ def identify_model_column(
                 if camera:  # Skip empty strings
                     # Perform fuzzy matching and accumulate the score
                     score = process.extractOne(
-                        camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+                        camera,
+                        verkada_cameras_list,
+                        scorer=fuzz.token_sort_ratio,
                     )[1]
                     column_score += score
 
