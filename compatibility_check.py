@@ -7,6 +7,7 @@ Purpose: Import a list of third-party cameras and return to the terminal
 """
 
 import csv
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 import colorama
@@ -18,6 +19,7 @@ from thefuzz import fuzz, process
 colorama.init(autoreset=True)
 
 
+@dataclass
 class CompatibleModel:
     """Represents a compatible model with its details.
 
@@ -33,23 +35,11 @@ class CompatibleModel:
             initialized to 0.
     """
 
-    def __init__(
-        self,
-        model_name: str,
-        manufacturer: str,
-        minimum_supported_firmware_version: str,
-        notes: str,
-    ):
-        self.model_name = model_name
-        self.manufacturer = manufacturer
-        self.minimum_supported_firmware_version = (
-            minimum_supported_firmware_version
-        )
-        self.notes = notes
-        self.channels = 0
-
-    def __str__(self) -> str:
-        return self.model_name
+    model_name: str
+    manufacturer: str
+    minimum_supported_firmware_version: str
+    notes: str
+    channels: int = 0
 
 
 def get_camera_list(
@@ -69,7 +59,7 @@ def get_camera_list(
     if isinstance(compatible_models, list):
         return [model.model_name for model in compatible_models]
 
-    elif isinstance(compatible_models, dict):
+    if isinstance(compatible_models, dict):
         return list(compatible_models.keys())
 
     return []
@@ -150,7 +140,9 @@ def tabulate_data(data: List[List[str]]) -> None:
         None
     """
     # Extract column names (first element)
-    headers = [f"{Fore.LIGHTBLACK_EX}{row[0]}{Style.RESET_ALL}" for row in data]
+    headers = [
+        f"{Fore.LIGHTBLACK_EX}{row[0]}{Style.RESET_ALL}" for row in data
+    ]
 
     # Extract data starting from the second element
     table = [row[1:] for row in data]
@@ -387,10 +379,10 @@ def main():
     verkada_cameras_list = get_camera_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet 3.csv"
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet 5.csv"
     )
 
-    tabulate_data(customer_cameras_raw)
+    # tabulate_data(customer_cameras_raw)
 
     model_column = identify_model_column(
         customer_cameras_raw, verkada_cameras_list
