@@ -80,7 +80,7 @@ def get_manufacturer_list(
     """
     manufacturers: set[str] = set()
     if isinstance(compatible_models, list):
-        return {model.manufacturer for model in compatible_models}
+        return {model.manufacturer.lower() for model in compatible_models}
     return manufacturers
 
 
@@ -186,7 +186,7 @@ def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
     if " " in model_name:
         substrings = model_name.split(" ")
         filtered_substrings = [
-            sub for sub in substrings if sub not in manufacturers
+            sub for sub in substrings if sub.lower() not in manufacturers
         ]
         remaining_string = " ".join(filtered_substrings)
         return remaining_string
