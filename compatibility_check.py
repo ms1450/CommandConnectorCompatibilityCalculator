@@ -396,6 +396,7 @@ def main():
     else:
         print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
 
+
 # Execute if being ran directly
 if __name__ == "__main__":
     main()
