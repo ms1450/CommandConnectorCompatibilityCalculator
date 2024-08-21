@@ -130,7 +130,7 @@ def read_customer_list(filename: str) -> pd.DataFrame:
         list: A list of lists, with each inner list representing a column
             from the CSV file.
     """
-    return pd.read_csv(filename, encoding="UTF-8")
+    return pd.read_csv(filename, dtype=str, encoding="UTF-8")
 
 
 def tabulate_data(data: List[List[str]]) -> None:
@@ -215,7 +215,7 @@ def find_count_column(df: pd.DataFrame) -> Optional[int]:
             present.
     """
     # Case-insensitive pattern to search
-    count_column_pattern = re.compile(r"(?i)count.*")
+    count_column_pattern = re.compile(r"(?i)count.*|#")
 
     return next(
         (
@@ -251,7 +251,7 @@ def get_camera_count(
         )
         # Ensure the counts are integers and handle missing value cases
         return {
-            name.strip(): 0 if pd.isna(i) else int(i)
+            str(name).strip(): 0 if pd.isna(i) or i == "nan" else int(i)
             for name, i in camera_statistics.items()
             if name
         }
@@ -470,7 +470,7 @@ def main():
     verkada_cameras_list = get_camera_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet 6.csv"
+        "./Camera Compatibility Sheets/Axis_edited.csv"
     )
 
     # NOTE: Uncomment to print raw csv
