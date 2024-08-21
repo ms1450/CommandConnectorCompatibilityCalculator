@@ -6,11 +6,12 @@ Purpose: Import a list of third-party cameras and return to the terminal
     which cameras are compatible with the cloud connector.
 """
 
-import csv
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 import colorama
+import re
+import pandas as pd
 from colorama import Fore, Style
 from tabulate import tabulate
 from thefuzz import fuzz, process
@@ -92,42 +93,46 @@ def find_matching_camera(
 def parse_compatibility_list(filename: str) -> List[CompatibleModel]:
     """Parse a CSV file to create a list of compatible models.
 
+    This function reads a specified CSV file, skipping the first five
+    rows, and constructs a list of CompatibleModel objects from the
+    remaining rows. It returns the list of compatible models for further
+    processing.
+
     Args:
         filename (str): The path to the CSV file containing compatibility
             data.
 
     Returns:
-        List[CompatibleModel]: A list of CompatibleModel objects created
-            from the CSV data.
+        list: A list of CompatibleModel objects created from the CSV data.
     """
     compatible_models = []
-    with open(filename, newline="", encoding="UTF-8") as csvfile:
-        reader = csv.reader(csvfile, delimiter=",")
-        # Skip the first 5 rows
-        for _ in range(5):
-            next(reader)
-        # Read the rest of the rows and create CompatibleModel objects
-        for row in reader:
-            model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
-            compatible_models.append(model)
+    df = pd.read_csv(filename, skiprows=5, header=None, encoding="UTF-8")
+
+    # Read the rest of the rows and create CompatibleModel objects
+    for _, row in df.iterrows():
+        model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
+        compatible_models.append(model)
     return compatible_models
 
 
 def read_customer_list(filename: str) -> List[List[str]]:
     """Read a CSV file and transpose its rows into columns.
 
+    This function opens a specified CSV file and reads its content,
+    transposing the rows into columns for easier access. It returns a
+    list of lists, where each inner list represents a column from the
+    original CSV data.
+
     Args:
         filename (str): The path to the CSV file containing customer data.
 
     Returns:
-        List[List[str]]: A list of lists, with each inner list
-            representing a column from the CSV file.
+        list: A list of lists, with each inner list representing a column
+            from the CSV file.
     """
-    with open(filename, newline="", encoding="UTF-8") as csvfile:
-        reader = csv.reader(csvfile)
-        # Use zip(*reader) to transpose rows into columns
-        columns = list(zip(*reader))
-    return [list(column) for column in columns]
+    return pd.read_csv(
+        filename, header=None, encoding="UTF-8"
+    ).T.values.tolist()
 
 
 def tabulate_data(data: List[List[str]]) -> None:
@@ -218,6 +223,27 @@ def get_camera_count(
         if value and "model" not in value.lower():
             camera_statistics[value] = camera_statistics.get(value, 0) + 1
     return camera_statistics
+
+
+def strip_ansi_codes(text: str) -> str:
+    """
+    Removes ANSI escape codes from a given text string. This function is
+    useful for cleaning up text that may contain formatting codes,
+    ensuring that the output is plain and readable.
+
+    The function uses a regular expression to identify and strip out ANSI
+    codes, which are often used for terminal text formatting. The result
+    is a clean string without any formatting artifacts.
+
+    Args:
+        text (str): The input string potentially containing ANSI escape
+            codes.
+
+    Returns:
+        str: The cleaned string with ANSI codes removed.
+    """
+
+    return re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]").sub("", text)
 
 
 def camera_match(
@@ -330,7 +356,7 @@ def print_list_data(
         )
 
     # Create table headers
-    headers = [
+    color_headers = [
         f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
@@ -340,17 +366,42 @@ def print_list_data(
         f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
     ]
 
+    plain_headers = [
+        "Camera Name",
+        "Count",
+        "Match Type",
+        "Manufacturer",
+        "Model",
+        "Min Firmware Version",
+        "Notes",
+    ]
     # Sort alphabetically
     output.sort(key=lambda x: x[2], reverse=True)
 
     # Print table in pretty format
-    print(tabulate(output, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
 
-    # Optionally, save to file (uncomment and adjust if needed)
-    # with open("camera_matches.csv", "w", newline="", encoding="UTF-8") as f:
-    #     writer = csv.writer(f)
-    #     writer.writerow(headers)
-    #     writer.writerows(output)
+    # Convert to Pandas DataFrame
+    df = pd.DataFrame(
+        output,
+        columns=plain_headers,
+    )
+    # Strip color codes
+    df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
+
+    # Uncomment to write truncated to terminal
+    # print(df.head())
+
+    # Uncomment to write to html file
+    # df.to_html("camera_models.html", index=False)
+
+    # Uncomment to write output to a csv
+    with open("camera_models.txt", "w", encoding="UTF-8") as f:
+        f.write(
+            tabulate(
+                df.values.tolist(), headers=plain_headers, tablefmt="simple"
+            )
+        )
 
 
 def main():
@@ -379,7 +430,7 @@ def main():
     verkada_cameras_list = get_camera_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet 5.csv"
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
     )
 
     # tabulate_data(customer_cameras_raw)
