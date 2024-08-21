@@ -149,20 +149,14 @@ def tabulate_data(data: List[List[str]]) -> None:
     Returns:
         None
     """
-    #! Assuming the columns are in order
-    camera_models, direct_comparison, recommended_replacement = data
+    # Extract column names (first element)
+    headers = [f"{Fore.LIGHTBLACK_EX}{row[0]}{Style.RESET_ALL}" for row in data]
+
+    # Extract data starting from the second element
+    table = [row[1:] for row in data]
 
     # Pair values off
-    combined_data = list(
-        zip(camera_models, direct_comparison, recommended_replacement)
-    )
-
-    # Define headers *REQUIRED*
-    headers = [
-        f"{Fore.LIGHTBLACK_EX}Camera Model{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Direct Comparison{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Recommended Replacement{Style.RESET_ALL}",
-    ]
+    combined_data = list(zip(*table))
 
     # Print the tabulated data
     print(tabulate(combined_data, headers=headers, tablefmt="fancy_grid"))
@@ -393,7 +387,7 @@ def main():
     verkada_cameras_list = get_camera_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet 3.csv"
     )
 
     tabulate_data(customer_cameras_raw)
