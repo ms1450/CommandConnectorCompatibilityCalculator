@@ -190,7 +190,6 @@ def identify_model_column(
 
     if scores:
         return scores.index(max(scores))
-
     print(
         f"{Fore.RED}No valid scores found."
         f"{Style.RESET_ALL} Check your input data."
@@ -390,14 +389,12 @@ def main():
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
-
         traced_cameras = camera_match(
             customer_cameras_list, verkada_cameras_list, verkada_cameras
         )
         print_list_data(customer_cameras, traced_cameras)
     else:
         print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
-
 
 # Execute if being ran directly
 if __name__ == "__main__":
