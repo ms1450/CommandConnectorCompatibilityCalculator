@@ -174,7 +174,8 @@ def tabulate_data(data: List[List[str]]) -> None:
 
 
 def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
-    """Checks if manufacturer name is in the model name, if it is, then the manufacturer name gets removed.
+    """Checks if manufacturer name is in the model name, if it is, then 
+    the manufacturer name gets removed.
 
     Args:
         model_name (str): The name of the model.
