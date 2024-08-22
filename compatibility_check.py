@@ -65,6 +65,25 @@ def get_camera_list(
     return []
 
 
+def get_manufacturer_list(
+    compatible_models: Union[List[CompatibleModel]],
+) -> set[str]:
+    """Retrieve a set of camera manufacturer names from compatible models.
+
+    Args:
+        compatible_models
+        (Union[List[CompatibleModel]]): A list of model objects.
+
+    Returns:
+        set[str]: A set of camera manufacturer names or an empty set
+            if the input is invalid.
+    """
+    manufacturers: set[str] = set()
+    if isinstance(compatible_models, list):
+        return {model.manufacturer.lower() for model in compatible_models}
+    return manufacturers
+
+
 def find_matching_camera(
     camera_name: str, verkada_cameras: List[CompatibleModel]
 ) -> Optional[CompatibleModel]:
@@ -154,8 +173,32 @@ def tabulate_data(data: List[List[str]]) -> None:
     print(tabulate(combined_data, headers=headers, tablefmt="fancy_grid"))
 
 
+def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
+    """Checks if manufacturer name is in the model name, if it is, then
+    the manufacturer name gets removed.
+
+    Args:
+        model_name (str): The name of the model.
+        manufacturers (set[str]): A set of manufacturer names.
+
+    Returns:
+        str: The manufacturer name removed.
+    """
+    if " " in model_name:
+        substrings = model_name.split(" ")
+        filtered_substrings = [
+            sub for sub in substrings if sub.lower() not in manufacturers
+        ]
+        remaining_string = " ".join(filtered_substrings)
+        return remaining_string
+    else:
+        return model_name
+
+
 def identify_model_column(
-    customer_cameras_raw: List[List[str]], verkada_cameras_list: List[str]
+    customer_cameras_raw: List[List[str]],
+    verkada_cameras_list: List[str],
+    manufacturer_list: set[str],
 ) -> Optional[int]:
     """Identify the column index that best matches camera models.
 
@@ -164,6 +207,7 @@ def identify_model_column(
             transposed into columns.
         verkada_cameras_list (List[str]): List of known Verkada camera
             model names.
+        manufacturer_list (set[str]): Set of manufacturer model names.
 
     Returns:
         Optional[int]: The index of the column with the highest match
@@ -175,8 +219,9 @@ def identify_model_column(
         column_score = 0
 
         for camera in column_data:
-            model_name = camera.strip()
-
+            model_name = manufacturer_removed(
+                camera.strip(), manufacturer_list
+            )
             if model_name and model_name not in column_values:
                 score = process.extractOne(
                     model_name,
@@ -189,6 +234,7 @@ def identify_model_column(
         scores.append(column_score)
 
     if scores:
+        print(scores)
         return scores.index(max(scores))
     print(
         f"{Fore.RED}No valid scores found."
@@ -223,6 +269,7 @@ def camera_match(
     list_customer_cameras: List[str],
     verkada_cameras_list: List[str],
     verkada_cameras: List[CompatibleModel],
+    manufacturer_list: set[str],
 ) -> List[Tuple[str, str, Optional[CompatibleModel]]]:
     """Match customer cameras against a list of known Verkada cameras.
 
@@ -233,6 +280,7 @@ def camera_match(
             names.
         verkada_cameras (List[CompatibleModel]): A list of CompatibleModel
             objects.
+        manufacturer_list (set[str]): A set of manufacturer model
 
     Returns:
         List[Tuple[str, str, Optional[CompatibleModel]]]: A list of tuples
@@ -247,14 +295,17 @@ def camera_match(
 
     for camera in list_customer_cameras:
         if camera:
+            camera_model = manufacturer_removed(camera, manufacturer_list)
             match, score = process.extractOne(
-                camera, verkada_cameras_list, scorer=fuzz.ratio
+                camera_model, verkada_cameras_list, scorer=fuzz.ratio
             )
             _, sort_score = process.extractOne(
-                camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+                camera_model,
+                verkada_cameras_list,
+                scorer=fuzz.token_sort_ratio,
             )
             _, set_score = process.extractOne(
-                camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
+                camera_model, verkada_cameras_list, scorer=fuzz.token_set_ratio
             )
 
             if score == 100 or sort_score == 100:
@@ -376,6 +427,7 @@ def main():
         "Verkada Command Connector Compatibility.csv"
     )
     verkada_cameras_list = get_camera_list(verkada_cameras)
+    manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
         "./Camera Compatibility Sheets/Camera Compatibility Sheet 5.csv"
@@ -384,13 +436,16 @@ def main():
     # tabulate_data(customer_cameras_raw)
 
     model_column = identify_model_column(
-        customer_cameras_raw, verkada_cameras_list
+        customer_cameras_raw, verkada_cameras_list, manufacturers
     )
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
         traced_cameras = camera_match(
-            customer_cameras_list, verkada_cameras_list, verkada_cameras
+            customer_cameras_list,
+            verkada_cameras_list,
+            verkada_cameras,
+            manufacturers,
         )
         print_list_data(customer_cameras, traced_cameras)
     else:
