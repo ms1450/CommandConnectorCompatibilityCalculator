@@ -216,6 +216,7 @@ def identify_model_column(
     """
 
     def calculate_column_score(column_data):
+        column_values = set()
         column_score = 0
 
         for camera in column_data.dropna():  # Remove NaN values
@@ -223,7 +224,9 @@ def identify_model_column(
                 camera = manufacturer_removed(
                     camera.strip(), manufacturer_list
                 )
-                if camera:  # Skip empty strings
+                if (
+                    camera and camera not in column_values
+                ):  # Skip empty strings
                     # Perform fuzzy matching and accumulate the score
                     score = process.extractOne(
                         camera,
