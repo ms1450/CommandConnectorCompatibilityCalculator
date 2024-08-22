@@ -174,5 +174,26 @@ def recommend_connector(
         None,
     )
 
+def calculate_mp(width, height):
+    """
+    Calculates the megapixel (MP) value based on the given width and
+    height in pixels. The function converts the pixel dimensions into
+    megapixels by dividing the total pixel count by one million.
 
-print(recommend_connector(4, 4, 2.3))
+    This function is useful for determining the resolution of an image
+    in terms of megapixels, which is a common metric in photography and
+    imaging. It takes the width and height as inputs and returns the
+    calculated MP value.
+
+    Args:
+        width (int): The width of the image in pixels.
+        height (int): The height of the image in pixels.
+
+    Returns:
+        float: The calculated megapixel value.
+    """
+    print(f"{width}x{height}")
+    return (width * height) / 1000000
+
+
+print(calculate_mp(2688,1512))
