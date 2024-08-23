@@ -7,6 +7,7 @@ import logging
 
 LOG_LEVEL = logging.DEBUG
 
+
 class CenterAlignFormatter(logging.Formatter):
     """Custom logging formatter that center-aligns the level name.
 

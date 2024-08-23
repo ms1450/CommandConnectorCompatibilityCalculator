@@ -289,8 +289,8 @@ def get_connectors(
         surplus_channels = abs(device["low_channels"] - channels)
         surplus_storage = abs(device["storage"] - storage)
         log.debug(device["name"])
-        log.debug("%f : %f",min_surplus_channels, surplus_channels)
-        log.debug("%f : %f",min_surplus_storage, surplus_storage)
+        log.debug("%f : %f", min_surplus_channels, surplus_channels)
+        log.debug("%f : %f", min_surplus_storage, surplus_storage)
         # Select the connector with the least surplus
         if (
             surplus_channels >= 0
