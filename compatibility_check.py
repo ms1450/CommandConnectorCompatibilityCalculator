@@ -16,6 +16,8 @@ from colorama import Fore, Style
 from tabulate import tabulate
 from thefuzz import fuzz, process
 
+from app import log
+
 # Initialize colorized output
 colorama.init(autoreset=True)
 
@@ -244,8 +246,10 @@ def identify_model_column(
     if not scores.empty and scores.max() > 0:
         return scores.idxmax()
 
-    print(
-        f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
+    log.warning(
+        "%sNo valid scores found.%s Check your input data.",
+        Fore.RED,
+        Style.RESET_ALL,
     )
     return None
 
@@ -305,7 +309,7 @@ def get_camera_count(
     # Default to counting cameras by name
     customer_cameras_raw.T.values.tolist()
     for value in customer_cameras_raw[column_number]:
-        value = value.strip()
+        value = str(value).strip()
         if value and "model" not in value.lower():
             camera_statistics[value] = camera_statistics.get(value, 0) + 1
     return camera_statistics
@@ -522,7 +526,7 @@ def main():
     manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Axis_edited.csv"
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
     )
 
     # NOTE: Uncomment to print raw csv
@@ -546,7 +550,9 @@ def main():
         )
         print_list_data(customer_cameras, traced_cameras)
     else:
-        print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
+        log.critical(
+            "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
+        )
 
 
 # Execute if being ran directly

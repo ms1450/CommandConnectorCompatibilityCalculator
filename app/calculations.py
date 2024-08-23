@@ -5,7 +5,11 @@ Purpose: The contents of this file are to perform various calculations
     a deal.
 """
 
-from typing import List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict
+
+import pandas as pd
+
+from app import log
 
 
 class Connector(TypedDict):
@@ -73,6 +77,113 @@ COMMAND_CONNECTORS: List[Connector] = [
         "high_channels": 12,
     },
 ]
+
+
+def compile_low_mp_cameras() -> pd.DataFrame:
+    """Compile a DataFrame of cameras with 5 megapixels or less.
+
+    This function reads camera specifications from a CSV file and filters
+    the data to return only those cameras that have a megapixel rating of
+    5 or lower.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing camera specifications for
+        cameras with 5 megapixels or less.
+
+    Raises:
+        FileNotFoundError: If the "Camera Specs.csv" file does not exist.
+
+    Examples:
+        >>> low_mp_cameras = compile_low_mp_cameras()
+        >>> print(low_mp_cameras)
+    """
+
+    camera_map = pd.read_csv("Camera Specs.csv")
+    return camera_map[camera_map["MP"] <= 5]
+
+
+def compile_high_mp_cameras() -> pd.DataFrame:
+    """Compile a DataFrame of cameras with more than 5 megapixels.
+
+    This function reads camera specifications from a CSV file and filters
+    the data to return only those cameras that have a megapixel rating of
+    more than 5 megapixels.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing camera specifications for
+        cameras with more than 5 megapixels.
+
+    Raises:
+        FileNotFoundError: If the "Camera Specs.csv" file does not exist.
+
+    Examples:
+        >>> low_mp_cameras = compile_high_mp_cameras()
+        >>> print(high_mp_cameras)
+    """
+
+    camera_map = pd.read_csv("Camera Specs.csv")
+    return camera_map[camera_map["MP"] > 5]
+
+
+def count_low_mp_channels(customer_cameras: Dict[str, int]) -> int:
+    """Calculate the total number of channels for low megapixel cameras.
+
+    This function takes a dictionary of customer cameras and computes the total
+    number of channels for those cameras that are classified as low megapixel.
+    It merges the camera data with a predefined list of low megapixel cameras
+    and calculates the total channels based on the count of each camera model.
+
+    Args:
+        customer_cameras (Dict[str, int]): A dictionary where keys are camera
+        model names and values are the counts of each model.
+
+    Returns:
+        int: The total number of channels for low megapixel cameras.
+    """
+
+    cameras = pd.DataFrame(
+        list(customer_cameras.items()), columns=["Model", "Count"]
+    )  # Convert to DataFrame
+    low_mp_list = compile_low_mp_cameras()
+    merged_df = pd.merge(
+        cameras, low_mp_list, left_on="Model", right_on="Model Name"
+    )
+
+    merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
+    log.debug("\n%s", merged_df.head())
+
+    return merged_df["Total Channels"].sum()
+
+
+def count_high_mp_channels(customer_cameras: Dict[str, int]) -> int:
+    """Calculate the total number of channels for high megapixel cameras.
+
+    This function takes a dictionary of customer cameras and computes the
+    total number of channels for those cameras that are classified as high
+    megapixel. It merges the camera data with a predefined list of high
+    megapixel cameras and calculates the total channels based on the count
+    of each camera model.
+
+    Args:
+        customer_cameras (Dict[str, int]): A dictionary where keys are camera
+        model names and values are the counts of each model.
+
+    Returns:
+        int: The total number of channels for high megapixel cameras.
+    """
+
+    cameras = pd.DataFrame(
+        list(customer_cameras.items()), columns=["Model", "Count"]
+    )  # Convert to DataFrame
+    high_mp_list = compile_high_mp_cameras()
+    merged_df = pd.merge(
+        cameras, high_mp_list, left_on="Model", right_on="Model Name"
+    )
+
+    merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
+    log.debug("\n%s", merged_df.head())
+
+    return merged_df["Total Channels"].sum()
 
 
 def calculate_low_mp_storage(channels: int, retention: int) -> Optional[float]:
@@ -156,6 +267,7 @@ def recommend_connector(
     """
 
     total_required_channels = low_channels + high_channels * 2
+    log.debug("Total channels: %d", total_required_channels)
     return next(
         (
             device["name"]
@@ -171,7 +283,7 @@ def recommend_connector(
     )
 
 
-def calculate_mp(width, height):
+def calculate_mp(width: int, height: int) -> float:
     """
     Calculates the megapixel (MP) value based on the given width and
     height in pixels. The function converts the pixel dimensions into
@@ -189,5 +301,5 @@ def calculate_mp(width, height):
     Returns:
         float: The calculated megapixel value.
     """
-    print(f"{width}x{height}")
+    log.info("%ix%i", width, height)
     return (width * height) / 1000000
