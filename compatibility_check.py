@@ -430,7 +430,7 @@ def main():
     manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet 5.csv"
+        "Camera Compatibility Sheets/customer_sheet_4.csv"
     )
 
     # tabulate_data(customer_cameras_raw)
