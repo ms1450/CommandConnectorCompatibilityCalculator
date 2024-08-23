@@ -155,15 +155,14 @@ def read_customer_list(filename: str) -> List[List[str]]:
 def santize_customer_list(
     customer_list: List[List[str]], dictionary: set[str]
 ) -> List[List[str]]:
-    """Santize the supplied customer list.
+    """Santize the supplied list of customers.
 
     Args:
-        customer_list (List[List[str]]): The supplied customer list.
-        dictionary (List[str]): The keywords used to filter the supplied customer list.
+        customer_list (List[List[str]]): The list of customers.
+        dictionary (set[str]): The set of customers.
 
     Returns:
-        List[List[str]]: A sanitized list of lists, with each inner list
-         representing a column from the CSV file.
+        List[List[str]]: A list of lists, with each inner list
     """
     # Get the set if English words from NLTK
     english_dictionary = set(word.lower() for word in words.words())
@@ -227,6 +226,14 @@ def santize_customer_list(
         return any(is_ip_address(value) for value in values)
 
     def is_mac_address(value: str) -> bool:
+        """Check if the given value is a valid MAC address.
+
+        Args:
+            value (str): The value to check.
+
+        Returns:
+            bool: True if the value is a valid MAC address, False otherwise.
+        """
         mac_pattern = re.compile(
             r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
         )
@@ -246,6 +253,15 @@ def santize_customer_list(
     def remove_ip_mac(
         headers: List[str], data: List[List[str]]
     ) -> (List[str], List[List[str]]):
+        """Remove the IP addresses from the supplied headers and data.
+
+        Args:
+            headers (List[str]): The list of headers.
+            data (List[List[List[str]]]): The list of data to be removed.
+
+        Returns:
+            Tuple[List[str], List[List[str]]]: The sanitized headers and data.
+        """
         columns_to_remove = []
         for column_index in range(len(headers)):
             column_values = data[column_index]
