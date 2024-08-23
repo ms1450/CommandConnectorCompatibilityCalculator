@@ -173,7 +173,7 @@ def tabulate_data(data: List[List[str]]) -> None:
     combined_data = list(zip(*table))
 
     # Print the tabulated data
-    print(tabulate(combined_data, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
 
 
 def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
@@ -526,7 +526,10 @@ def main():
     )
 
     # NOTE: Uncomment to print raw csv
-    # tabulate_data(customer_cameras_raw)
+    # tabulate_data(
+    #     [customer_cameras_raw.columns.tolist()]
+    #     + customer_cameras_raw.T.values.tolist()
+    # )
 
     model_column = identify_model_column(
         customer_cameras_raw, verkada_cameras_list, manufacturers

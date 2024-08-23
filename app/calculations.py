@@ -98,11 +98,9 @@ def calculate_low_mp_storage(channels: int, retention: int) -> Optional[float]:
 
     if retention <= 30:
         return channels * 0.256 * 30
-    elif retention <= 60:
+    if retention <= 60:
         return channels * 0.512 * 60
-    elif retention <= 90:
-        return channels * 0.768 * 90
-    return None
+    return channels * 0.768 * 90 if retention <= 90 else None
 
 
 def calculate_4k_storage(channels: int, retention: int) -> Optional[float]:
@@ -127,11 +125,9 @@ def calculate_4k_storage(channels: int, retention: int) -> Optional[float]:
     """
     if retention <= 30:
         return channels * 0.512 * 30
-    elif retention <= 60:
+    if retention <= 60:
         return channels * 1.024 * 60
-    elif retention <= 90:
-        return channels * 2.048 * 90
-    return None
+    return channels * 2.048 * 90 if retention <= 90 else None
 
 
 def recommend_connector(
@@ -174,6 +170,7 @@ def recommend_connector(
         None,
     )
 
+
 def calculate_mp(width, height):
     """
     Calculates the megapixel (MP) value based on the given width and
@@ -194,6 +191,3 @@ def calculate_mp(width, height):
     """
     print(f"{width}x{height}")
     return (width * height) / 1000000
-
-
-print(calculate_mp(2688,1512))
