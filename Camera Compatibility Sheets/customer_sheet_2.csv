@@ -1,0 +1,87 @@
+Type,#,Name,Out/In,Angle,Verkada Model,Serial/IP
+AXIS M3057-PLVE,1,Voc SW,Out,,,169.254.55.51
+AXIS M3007,2,Gym Entrance,In,,,205.120.19.69
+AXIS M3004,3,Faculty Hall,In,,,205.120.19.70
+AXIS M3004,4,Vending Machine Hall,In,,,205.120.19.71
+AXIS M3006,5,North Locker,In,,,205.120.19.72
+AXIS M3004,6,Lockeroom Hall,In,,,205.120.19.73
+AXIS M3004,7,Weight Room,In,,,205.120.19.74
+AXIS P3354,8,NW Cafeteria,In,,,205.120.19.75
+AXIS M3007,9,Main Entrance,In,,,205.120.19.77
+AXIS M3004,10,Science Hall,In,,,205.120.19.78
+AXIS M3006,11,Seminary Entrance,In,,,205.120.19.79
+AXIS M3006,12,East Lockers,In,,,205.120.19.80
+AXIS p3354,13,E Cafeteria,In,,,205.120.19.81
+AXIS P3367,14,S Lower Parking,Out,,,205.120.19.82
+AXIS P3367,15,North Soccer,Out,,,205.120.19.84
+AXIS p1357,16,Bus Loading 1,Out,,,205.120.19.88
+AXIS P3367,17,West Parking,Out,,,205.120.19.89
+AXIS P1357,18,Bus Loading 2,Out,,,205.120.19.90
+AXIS M3025,19,SO Entrance,Out,,,205.120.19.92
+AXIS M3007,20,Seminary Stairwell,In,,,205.120.19.94
+AXIS M3004,21,Wrestling Room,In,,,205.120.19.95
+AXIS M3007,22,Gym Stairwell,In,,,205.120.19.96
+AXIS M3004,23,English Hall,In,,,205.120.19.97
+AXIS M3007,24,Library Entrance,In,,,205.120.19.98
+AXIS M3006,25,Library 1,In,,,205.120.19.99
+AXIS M3004,26,Math Hall,In,,,205.120.19.100
+AXIS M3007,27,Voc W Entrance,In,,,205.120.19.101
+AXIS M3005,28,Voc E Entrance,In,,,205.120.19.102
+AXIS M3007,29,North Track,In,,,205.120.19.104
+AXIS M3025,30,West Entrance,Out,,,205.120.19.105
+AXIS M3006,31,SW Gym,In,,,205.120.19.107
+AXIS P3214-V,32,SRO Office,In,90,CM41,205120.19.108
+AXIS M3007,33,Cafeteria,In,360,CF81,205.120.19.109
+AXIS P3214-V,34,Library 2,In,,,205.120.19.110
+AXIS M3027,35,History Display Stairwell,In,,,205.120.19.112
+AXIS M3007,36,Little Theater,In,,,205.120.19.114
+AXIS M3027,37,NE Snack Shack,Out,,,205.120.19.115
+AXIS M3027,38,SW Snack Shack,Out,,,205.120.19.117
+AXIS M3057-PLVE MkII,39,Cafeteria Parking,Out,,,205.120.19.118
+AXIS M3057-PLVE MkII,40,W Voc. Parking,Out,,,205.120.19.119
+AXIS M3007,41,N Snack Shack,Out,,,205.120.19.120
+AXIS M3057-PLVE,42,NE,Out,,,205.120.19.121
+AXIS M3057-PLVE,43,NW Gym,Out,,,205.120.19.122
+AXIS M3058,44,Seminary SE,Out,,,205.120.19.123
+AXIS M3057-PLVE,45,Loading Zone,Out,,,205.120.19.124
+AXIS M3057-PLVE,46,Weight Room,Out,,,205.120.19.125
+Standard,1,Main Entrance,Out,180,CD42-E ?,9YKT-P4TW-M7LF
+Fisheye,2,Front Entry,In,360,CM41 ?,
+Standard,3,Front Office Entry,In,90,CM41,
+Standard,4,Cafeteria,In,90,CM41,
+Standard,5,Band Hall,In,90,CM41,
+Fisheye,6,Gym,In,360,CF81-E,
+Fisheye,7,Main Drop Off SE Outside Entrance,Out,360,CF81-E,
+Standard,8,LIbrary,In,90,CM41,
+Fisheye,9,Science Hall,In,360/180,CM41 ?,
+Fisheye,10,Math Hall,In,360/180,CM41 ?,
+Standard,11,English Hall,In,90,CM41,
+Standard,12,South Side Entry,In,90,CM41,
+Fisheye,13,Vocational Entrance,Out,180,CF81-E,
+Fisheye,14,NE Corner,Out,360,CF81-E,
+Fisheye,15,NW Out Gym,Out,360,CF81-E,
+Standard,16,WC Rec Gym,In,90,CD42-E,
+Standard,17,WC Batting Cage,In,90,CM41,
+Fisheye,18,WC OUt NE Corner,Out,360,CF81-E,
+Fisheye,19,WC Commons M3047-P (3),In,360,CF81-E,
+Fisheye,20,WC SE Hall M3047-P (2),In,180,CM41 ?,
+Fisheye,21,WC Out Main Entrance M3057-PLVE (2) - Overview,Out,360,CD42-E ?,
+Fisheye,22,WC Out SE M3057-PLVE (3),Out,360,CF81-E,
+Fisheye,23,WC Out W Corner S M3057-PLVE - Overview,Out,360,?,
+Fisheye,24,WC SW Hall M3047-P,In,180,CM41 ?,
+Fisheye,25,WC Vending M3047-P (4),In,90/180,CM41,
+Standard,26,WC North Hall Entrance,In,90,CM41,
+Fisheye,27,WC NW Corner,Out,360,CF81-E,
+Fisheye,1,NW Corner,Out,360,CF81-E,NMCK-YEDJ-JHGK
+Fisheye,2,NE Corner,Out,360,CF81-E,NMCE-A3CX-F4WH
+Fisheye,3,SW Corner,Out,360,CF81-E,NMCH-MDMA-47KG
+Fisheye,4,SE Corner,Out,360,CF81-E,NMCJ-FCPA-EC76
+Standard,5,,In,90,CM41,
+Standard,6,,In,90,CM42,
+Standard,7,,In,90,CM43,
+Standard,8,,In,90,CM44,
+Standard,9,,In,90,CM45,
+Standard,10,,In,90,CM46,
+Standard,11,,In,90,CM47,
+Standard,12,,In,90,CM48,
+Standard,13,,In,90,CM49,
