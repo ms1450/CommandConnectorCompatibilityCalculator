@@ -183,7 +183,13 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
         if not value:
             return value
         words = value.strip().split(' ')
-        filtered_words = [word for word in words if word.lower() not in keywords]
+        filtered_words = []
+        for word in words:
+            if word.lower() not in keywords:
+                if not is_ip_address(word) and not is_mac_address(
+                        word) and not is_special_character(word) and not is_integer(
+                        word):
+                    filtered_words.append(word)
         return ' '.join(filtered_words)
 
     def is_ip_address(value: str) -> bool:
@@ -245,13 +251,46 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
         ]
         return filtered_headers, filtered_data
 
+    def is_special_character(value: str) -> bool:
+        """Check if the given value is a single special character or a specific sequence.
+
+        Args:
+            value (str): The value to check.
+
+        Returns:
+            bool: True if the value is a special character or specific sequence, False otherwise.
+        """
+        # Define the regex pattern for special characters and sequences
+        special_char_pattern = re.compile(
+            r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
+        )
+
+        # Match the pattern and return whether it's a valid special character or sequence
+        return bool(special_char_pattern.match(value))
+
+    def is_integer(value: str) -> bool:
+        """Check if the given value is a valid integer using regex.
+
+        Args:
+            value (str): The value to check.
+
+        Returns:
+            bool: True if the value is an integer, False otherwise.
+        """
+        # Define the regex pattern for an integer
+        integer_pattern = re.compile(r'^[-+]?\d+$')
+
+        # Match the pattern and return whether it's a valid integer
+        return bool(integer_pattern.match(value))
+
+
     sanitized_data = []
     for column in data:
         sanitized_column = []
         for value in column:
             sanitized_value = remove_keywords(value, dictionary)
             sanitized_value = remove_keywords(sanitized_value, english_dictionary)
-            if not is_ip_address(sanitized_value) and not is_mac_address(sanitized_value):
+            if not is_ip_address(sanitized_value) and not is_mac_address(sanitized_value) and not is_special_character(sanitized_value) and not is_integer(sanitized_value):
                 sanitized_column.append(sanitized_value)
         sanitized_data.append(sanitized_column)
     sanitized_headers, sanitized_data = remove_ip_mac(headers, sanitized_data)
@@ -539,7 +578,7 @@ def main():
     manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "Camera Compatibility Sheets/customer_sheet_7.csv"
+        "Camera Compatibility Sheets/customer_sheet_3.csv"
     )
     customer_cameras_raw = santize_customer_list(customer_cameras_raw, manufacturers)
     # tabulate_data(customer_cameras_raw)
@@ -547,6 +586,7 @@ def main():
     model_column = identify_model_column(
         customer_cameras_raw, verkada_cameras_list, manufacturers
     )
+    print(model_column)
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
