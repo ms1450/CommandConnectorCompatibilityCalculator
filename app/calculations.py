@@ -78,6 +78,13 @@ COMMAND_CONNECTORS: List[Connector] = [
     },
 ]
 
+# Flips to larger connectors first
+REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
+    COMMAND_CONNECTORS,
+    key=lambda x: (x["low_channels"], x["storage"]),
+    reverse=True,
+)
+
 
 def compile_low_mp_cameras() -> pd.DataFrame:
     """Compile a DataFrame of cameras with 5 megapixels or less.
@@ -140,7 +147,6 @@ def count_low_mp_channels(customer_cameras: Dict[str, int]) -> int:
     Returns:
         int: The total number of channels for low megapixel cameras.
     """
-
     cameras = pd.DataFrame(
         list(customer_cameras.items()), columns=["Model", "Count"]
     )  # Convert to DataFrame
@@ -150,7 +156,7 @@ def count_low_mp_channels(customer_cameras: Dict[str, int]) -> int:
     )
 
     merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
-    log.debug("\n%s", merged_df.head())
+    log.debug("Low mp channels:\n%s", merged_df.head())
 
     return merged_df["Total Channels"].sum()
 
@@ -181,12 +187,12 @@ def count_high_mp_channels(customer_cameras: Dict[str, int]) -> int:
     )
 
     merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
-    log.debug("\n%s", merged_df.head())
+    log.debug("high mp channels:\n%s", merged_df.head())
 
     return merged_df["Total Channels"].sum()
 
 
-def calculate_low_mp_storage(channels: int, retention: int) -> Optional[float]:
+def calculate_low_mp_storage(channels: int, retention: int) -> float:
     """
     Calculates the low megapixel storage requirement based on the number
     of channels and the retention period. The function returns the storage
@@ -208,13 +214,13 @@ def calculate_low_mp_storage(channels: int, retention: int) -> Optional[float]:
     """
 
     if retention <= 30:
-        return channels * 0.256 * 30
+        return channels * 0.256
     if retention <= 60:
-        return channels * 0.512 * 60
-    return channels * 0.768 * 90 if retention <= 90 else None
+        return channels * 0.512
+    return channels * 0.768 * 90 if retention <= 90 else 0
 
 
-def calculate_4k_storage(channels: int, retention: int) -> Optional[float]:
+def calculate_4k_storage(channels: int, retention: int) -> float:
     """
     Calculates the 4k storage requirement based on the number
     of channels and the retention period. The function returns the storage
@@ -238,52 +244,107 @@ def calculate_4k_storage(channels: int, retention: int) -> Optional[float]:
         return channels * 0.512 * 30
     if retention <= 60:
         return channels * 1.024 * 60
-    return channels * 2.048 * 90 if retention <= 90 else None
+    return channels * 2.048 * 90 if retention <= 90 else 0
 
 
-def recommend_connector(
-    low_channels: int, high_channels: int, storage: float
-) -> Optional[str]:
+def get_connectors(
+    channels: int, storage: float, recommendation: Optional[List[str]] = None
+) -> List[str]:
     """
-    Recommends a suitable connector based on the specified channel
-    requirements and storage capacity. The function evaluates a predefined
-    list of connectors and returns the name of the first connector that
-    meets the criteria.
-
-    This function calculates the total required channels and checks each
-    connector in the list to see if it satisfies the storage and channel
-    constraints. If a suitable connector is found, its name is returned;
-    otherwise, the function returns None.
+    Retrieve a list of recommended connectors based on available channels
+    and storage. This function recursively finds connectors that meet the
+    specified requirements until they are satisfied.
 
     Args:
-        low_channels (int): The minimum number of low channels required.
-        high_channels (int): The minimum number of high channels required.
-        storage (float): The minimum storage capacity required in
-            terabytes.
+        channels (int): The number of available channels required.
+        storage (int): The amount of storage required.
+        mapping (List[Connector]): The mapping of Command Connectors and
+            their technical specifications.
+        recommendation (Optional[List[Connector]], optional): A list to
+        accumulate recommended connectors. Defaults to None.
 
     Returns:
-        Optional[str]: The name of the recommended connector, or None if
-            no suitable connector is found.
+        List[Connector]: A list of connectors that meet the specified
+        channels and storage requirements.
     """
+    log.debug("\n-----Entering iteration-----")
+    log.debug("Channels: %i", channels)
+    log.debug("Storage: %0.3f", storage)
+    # Base case: Initialize recommendation list
+    if recommendation is None:
+        log.debug("Initializing recursion.")
+        recommendation = []
 
-    total_required_channels = low_channels + high_channels * 2
-    log.debug("Total channels: %d", total_required_channels)
-    return next(
-        (
-            device["name"]
-            for device in COMMAND_CONNECTORS
-            if (
-                device["storage"] >= storage
-                and device["low_channels"] >= low_channels
-                and device["high_channels"] >= high_channels
-                and device["low_channels"] >= total_required_channels
+    # End case: Exit when channels and storage requirements are met
+    if channels <= 0 and storage <= 0:
+        log.debug("Exiting recursion.")
+        return recommendation
+
+    # Set base values assuming nothing is the best solution
+    best_connector = None
+    min_surplus_channels = float("inf")
+    min_surplus_storage = float("inf")
+
+    for device in COMMAND_CONNECTORS:
+        surplus_channels = abs(device["low_channels"] - channels)
+        surplus_storage = abs(device["storage"] - storage)
+        log.debug(device["name"])
+        log.debug("%f : %f",min_surplus_channels, surplus_channels)
+        log.debug("%f : %f",min_surplus_storage, surplus_storage)
+        # Select the connector with the least surplus
+        if (
+            surplus_channels >= 0
+            and surplus_storage >= 0
+            and (
+                (surplus_storage < min_surplus_storage)
+                or (surplus_storage == min_surplus_storage)
+                and surplus_channels < min_surplus_channels
             )
-        ),
-        None,
-    )
+        ):
+            best_connector = device
+            min_surplus_channels = surplus_channels
+            min_surplus_storage = surplus_storage
+
+    if best_connector:
+        log.debug("Recommending : %s", best_connector["name"])
+        recommendation.append(best_connector["name"])
+        # Reduce the remaining channels and storage requirements
+        if channels > 0:
+            channels -= best_connector["low_channels"]
+        if storage > 0:
+            storage -= best_connector["storage"]
+
+        # Continue recursing
+        return get_connectors(channels, storage, recommendation)
+
+    return recommendation  # Return the list of selected connectors
 
 
-def calculate_mp(width: int, height: int) -> float:
+def recommend_connector(low_channels: int, high_channels: int, storage: float):
+    """
+    Recommend a connector based on the specified low and high channel
+    requirements and storage capacity. This function calculates the total
+    required channels and invokes the connector retrieval process.
+
+    Args:
+        low_channels (int): The number of low channels required.
+        high_channels (int): The number of high channels required.
+        storage (float): The amount of storage available.
+
+    Returns:
+        None: This function does not return a value but calls another
+        function to get connectors.
+
+    Examples:
+        >>> recommend_connector(2, 3, 10.0)
+    """
+    log.info("Total storage needed: %0.2f", storage)
+    total_required_channels = low_channels + high_channels * 2
+    log.info("Total channels needed: %i", total_required_channels)
+    print(", ".join(get_connectors(total_required_channels, storage)))
+
+
+def calculate_mp(width, height):
     """
     Calculates the megapixel (MP) value based on the given width and
     height in pixels. The function converts the pixel dimensions into
@@ -301,5 +362,5 @@ def calculate_mp(width: int, height: int) -> float:
     Returns:
         float: The calculated megapixel value.
     """
-    log.info("%ix%i", width, height)
+    print(f"{width}x{height}")
     return (width * height) / 1000000

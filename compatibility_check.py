@@ -17,9 +17,12 @@ from tabulate import tabulate
 from thefuzz import fuzz, process
 
 from app import log
+import app.calculations as calc
 
 # Initialize colorized output
 colorama.init(autoreset=True)
+
+RETENTION = 30  # Required storage in days
 
 
 @dataclass
@@ -265,7 +268,7 @@ def find_count_column(df: pd.DataFrame) -> Optional[int]:
             present.
     """
     # Case-insensitive pattern to search
-    count_column_pattern = re.compile(r"(?i)count.*|#")
+    count_column_pattern = re.compile(r"(?i)\bcount\b|#|\bquantity\b")
 
     return next(
         (
@@ -499,6 +502,34 @@ def print_list_data(
     #     )
 
 
+def recommend_connectors(customer_cameras: Dict[str, int]):
+    """
+    Generate connector recommendations based on customer camera data and
+    model specifications. This function processes camera counts and
+    calculates the required storage for both low and high megapixel
+    channels.
+
+    Args:
+        customer_cameras (Dict[str, int]): A list of customer cameras and
+            the count of each model.
+
+    Returns:
+        None: This function does not return a value but triggers the
+            recommendation process for connectors.
+
+    Examples:
+        >>> recommend_connectors('model_column_name', raw_camera_data)
+    """
+    low_mp_count = calc.count_low_mp_channels(customer_cameras)
+    low_storage = calc.calculate_low_mp_storage(low_mp_count, RETENTION)
+
+    high_mp_count = calc.count_high_mp_channels(customer_cameras)
+    high_storage = calc.calculate_4k_storage(high_mp_count, RETENTION)
+
+    total_storage = low_storage + high_storage
+    calc.recommend_connector(low_mp_count, high_mp_count, total_storage)
+
+
 def main():
     """
     Main function that orchestrates the compatibility check between
@@ -541,7 +572,7 @@ def main():
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
-
+        recommend_connectors(customer_cameras)
         traced_cameras = camera_match(
             customer_cameras_list,
             verkada_cameras_list,

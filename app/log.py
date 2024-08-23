@@ -5,6 +5,7 @@ Purpose: Set a unified logger across all scripts.
 
 import logging
 
+LOG_LEVEL = logging.DEBUG
 
 class CenterAlignFormatter(logging.Formatter):
     """Custom logging formatter that center-aligns the level name.
@@ -31,7 +32,6 @@ class CenterAlignFormatter(logging.Formatter):
 
 # Set logging
 log = logging.getLogger()
-LOG_LEVEL = logging.DEBUG
 log.setLevel(LOG_LEVEL)
 
 # Set up the custom formatter
