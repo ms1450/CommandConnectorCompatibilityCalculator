@@ -152,7 +152,9 @@ def read_customer_list(filename: str) -> List[List[str]]:
     return [list(column) for column in columns]
 
 
-def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) -> List[List[str]]:
+def santize_customer_list(
+    customer_list: List[List[str]], dictionary: set[str]
+) -> List[List[str]]:
     """Santize the supplied customer list.
 
     Args:
@@ -182,15 +184,18 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
         """
         if not value:
             return value
-        words = value.strip().split(' ')
+        words = value.strip().split(" ")
         filtered_words = []
         for word in words:
             if word.lower() not in keywords:
-                if not is_ip_address(word) and not is_mac_address(
-                        word) and not is_special_character(word) and not is_integer(
-                        word):
+                if (
+                    not is_ip_address(word)
+                    and not is_mac_address(word)
+                    and not is_special_character(word)
+                    and not is_integer(word)
+                ):
                     filtered_words.append(word)
-        return ' '.join(filtered_words)
+        return " ".join(filtered_words)
 
     def is_ip_address(value: str) -> bool:
         """Check if the given value is a valid IPv4 address.
@@ -203,8 +208,8 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
         """
         # Regular expression to match IPv4 addresses
         ip_pattern = re.compile(
-            r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
-            r'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+            r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
+            r"(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
         )
 
         # Match the pattern and ensure it's a valid IP address
@@ -213,30 +218,34 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
     def contains_ip_address(values: List[str]) -> bool:
         """Check if the column contains IP addresses.
 
-                Args:
-                    values (List[str]): The list of values in the column.
+        Args:
+            values (List[str]): The list of values in the column.
 
-                Returns:
-                    bool: True if the column contains IP addresses, False otherwise.
-                """
+        Returns:
+            bool: True if the column contains IP addresses, False otherwise.
+        """
         return any(is_ip_address(value) for value in values)
 
     def is_mac_address(value: str) -> bool:
-        mac_pattern = re.compile(r'^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$')
+        mac_pattern = re.compile(
+            r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
+        )
         return bool(mac_pattern.match(value))
 
     def contains_mac_address(values: List[str]) -> bool:
         """Check if the column contains MAC addresses.
 
-                Args:
-                    values (List[str]): The list of values in the column.
+        Args:
+            values (List[str]): The list of values in the column.
 
-                Returns:
-                    bool: True if the column contains IP addresses, False otherwise.
-                """
+        Returns:
+            bool: True if the column contains IP addresses, False otherwise.
+        """
         return any(is_mac_address(value) for value in values)
 
-    def remove_ip_mac(headers: List[str], data: List[List[str]]) -> (List[str],  List[List[str]]):
+    def remove_ip_mac(
+        headers: List[str], data: List[List[str]]
+    ) -> (List[str], List[List[str]]):
         columns_to_remove = []
         for column_index in range(len(headers)):
             column_values = data[column_index]
@@ -244,9 +253,17 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
                 columns_to_remove.append(column_index)
             if contains_mac_address(column_values):
                 columns_to_remove.append(column_index)
-        filtered_headers = [header for index, header in enumerate(headers) if index not in columns_to_remove]
+        filtered_headers = [
+            header
+            for index, header in enumerate(headers)
+            if index not in columns_to_remove
+        ]
         filtered_data = [
-            [value for index, value in enumerate(row) if index not in columns_to_remove]
+            [
+                value
+                for index, value in enumerate(row)
+                if index not in columns_to_remove
+            ]
             for row in data
         ]
         return filtered_headers, filtered_data
@@ -278,19 +295,25 @@ def santize_customer_list(customer_list: List[List[str]], dictionary: set[str]) 
             bool: True if the value is an integer, False otherwise.
         """
         # Define the regex pattern for an integer
-        integer_pattern = re.compile(r'^[-+]?\d+$')
+        integer_pattern = re.compile(r"^[-+]?\d+$")
 
         # Match the pattern and return whether it's a valid integer
         return bool(integer_pattern.match(value))
-
 
     sanitized_data = []
     for column in data:
         sanitized_column = []
         for value in column:
             sanitized_value = remove_keywords(value, dictionary)
-            sanitized_value = remove_keywords(sanitized_value, english_dictionary)
-            if not is_ip_address(sanitized_value) and not is_mac_address(sanitized_value) and not is_special_character(sanitized_value) and not is_integer(sanitized_value):
+            sanitized_value = remove_keywords(
+                sanitized_value, english_dictionary
+            )
+            if (
+                not is_ip_address(sanitized_value)
+                and not is_mac_address(sanitized_value)
+                and not is_special_character(sanitized_value)
+                and not is_integer(sanitized_value)
+            ):
                 sanitized_column.append(sanitized_value)
         sanitized_data.append(sanitized_column)
     sanitized_headers, sanitized_data = remove_ip_mac(headers, sanitized_data)
@@ -570,7 +593,7 @@ def main():
     Returns:
         None
     """
-    nltk.download('words')
+    nltk.download("words")
     verkada_cameras = parse_compatibility_list(
         "Verkada Command Connector Compatibility.csv"
     )
@@ -578,9 +601,11 @@ def main():
     manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "Camera Compatibility Sheets/customer_sheet_3.csv"
+        "Camera Compatibility Sheets/Private/private 1.csv"
     )
-    customer_cameras_raw = santize_customer_list(customer_cameras_raw, manufacturers)
+    customer_cameras_raw = santize_customer_list(
+        customer_cameras_raw, manufacturers
+    )
     # tabulate_data(customer_cameras_raw)
 
     model_column = identify_model_column(
