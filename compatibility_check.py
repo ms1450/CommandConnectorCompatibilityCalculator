@@ -758,9 +758,10 @@ def main():
     manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet.csv"
+        "./Camera Compatibility Sheets/customer_sheet_7.csv"
     )
-
+    import app
+    santize_customer_data()
     # NOTE: Uncomment to print raw csv
     # tabulate_data(
     #     [customer_cameras_raw.columns.tolist()]
@@ -773,7 +774,7 @@ def main():
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
-        recommend_connectors(customer_cameras)
+        #recommend_connectors(customer_cameras)
         traced_cameras = camera_match(
             customer_cameras_list,
             verkada_cameras_list,

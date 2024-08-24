@@ -1,5 +1,6 @@
 """
 Author: Ian Young
+Co-Author: Mehul Sen
 Purpose: The contents of this file are to perform various calculations
     to inform the user how many Command Connectors will be required for
     a deal.
@@ -9,7 +10,11 @@ from typing import Dict, List, Optional, TypedDict
 
 import pandas as pd
 
-from app import log
+import re
+
+from thefuzz import fuzz, process
+
+from app import log, CompatibleModel, formatting
 
 
 class Connector(TypedDict):
@@ -25,7 +30,7 @@ class Connector(TypedDict):
 
     Attributes:
         name (str): The name of the connector.
-        storage (int): The storage capacity of the connector in gigabytes.
+        storage (int): The storage capacity of the connector in terabytes.
         low_channels (int): The minimum number of channels supported by
             the connector.
         high_channels (int): The maximum number of channels supported by
@@ -87,7 +92,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 
 def compile_low_mp_cameras() -> pd.DataFrame:
-    """Compile a DataFrame of cameras with 5 megapixels or less.
+    """Compile a DataFrame of cameras with 5 megapixels or fewer.
 
     This function reads camera specifications from a CSV file and filters
     the data to return only those cameras that have a megapixel rating of
@@ -95,17 +100,23 @@ def compile_low_mp_cameras() -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: A DataFrame containing camera specifications for
-        cameras with 5 megapixels or less.
+        cameras with 5 megapixels or fewer.
 
     Raises:
         FileNotFoundError: If the "Camera Specs.csv" file does not exist.
 
     Examples:
         >>> low_mp_cameras = compile_low_mp_cameras()
-        >>> print(low_mp_cameras)
+        >>> print(low_mp_cameras.head())
+              Manufacturer   Model Name   MP  Channels
+        0             ACTi          A71  4.0       1.0
+        1   Arecont Vision  AV02CID-200  2.1       1.0
+        5   Arecont Vision     AV4656DN  4.0       3.0
+        6   Arecont Vision     AV4956DN  4.0       2.0
+        11        Avigilon   1.0-H3-DC1  1.0       1.0
     """
 
-    camera_map = pd.read_csv("Camera Specs.csv")
+    camera_map = pd.read_csv("../Camera Specs.csv")
     return camera_map[camera_map["MP"] <= 5]
 
 
@@ -124,11 +135,17 @@ def compile_high_mp_cameras() -> pd.DataFrame:
         FileNotFoundError: If the "Camera Specs.csv" file does not exist.
 
     Examples:
-        >>> low_mp_cameras = compile_high_mp_cameras()
-        >>> print(high_mp_cameras)
+        >>> high_mp_cameras = compile_high_mp_cameras()
+        >>> print(high_mp_cameras.head())
+             Manufacturer Model Name    MP  Channels
+        2  Arecont Vision  AV12176DN  12.0       5.0
+        3  Arecont Vision  AV20175DN  20.0       5.0
+        4  Arecont Vision  AV20275DN  20.0       4.0
+        7  Arecont Vision   AV8185DN   8.0       5.0
+        8             Ava   360-W-30  12.0       1.0
     """
 
-    camera_map = pd.read_csv("Camera Specs.csv")
+    camera_map = pd.read_csv("../Camera Specs.csv")
     return camera_map[camera_map["MP"] > 5]
 
 
@@ -224,7 +241,7 @@ def calculate_4k_storage(channels: int, retention: int) -> float:
     """
     Calculates the 4k storage requirement based on the number
     of channels and the retention period. The function returns the storage
-    needed in gigabytes, depending on the specified retention duration.
+    needed in terabytes, depending on the specified retention duration.
 
     This function determines the storage requirement by applying different
     multipliers based on the retention period. It accounts for three
@@ -258,8 +275,6 @@ def get_connectors(
     Args:
         channels (int): The number of available channels required.
         storage (int): The amount of storage required.
-        mapping (List[Connector]): The mapping of Command Connectors and
-            their technical specifications.
         recommendation (Optional[List[Connector]], optional): A list to
         accumulate recommended connectors. Defaults to None.
 
@@ -337,6 +352,7 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
 
     Examples:
         >>> recommend_connector(2, 3, 10.0)
+        CC300-8TB, CC300-4TB
     """
     log.info("Total storage needed: %0.2f", storage)
     total_required_channels = low_channels + high_channels * 2
@@ -364,3 +380,177 @@ def calculate_mp(width, height):
     """
     print(f"{width}x{height}")
     return (width * height) / 1000000
+
+
+def identify_model_column(
+        customer_list: pd.DataFrame,
+        verkada_cameras: List[CompatibleModel]
+) -> Optional[int]:
+    verkada_camera_list = formatting.get_camera_set(verkada_cameras)
+    """Identify the column index that best matches camera models.
+
+        Args:
+            customer_cameras_raw (List[List[str]]): Raw customer camera data
+                transposed into columns.
+            verkada_cameras_list (List[str]): List of known Verkada camera
+                model names.
+            manufacturer_list (set[str]): Set of manufacturer model names.
+
+        Returns:
+            Optional[int]: The index of the column with the highest match
+                score, or None if no valid scores are found.
+    """
+    def calculate_score(column_data):
+        column_values = set()
+        column_score = 0
+        for camera in column_data.dropna():  # Remove NaN values
+            if isinstance(camera, str):
+                if (
+                    camera and camera not in column_values
+                ):  # Skip empty strings
+                    # Perform fuzzy matching and accumulate the score
+                    score = process.extractOne(
+                        camera,
+                        verkada_camera_list,
+                        scorer=fuzz.token_sort_ratio,
+                    )[1]
+                    column_score += score
+        return column_score
+    # Apply the score calculation to each column in the DataFrame
+    scores = customer_list.apply(calculate_score)
+    log.info("Scores: " + scores.to_string())
+    # Get the index of the column with the highest score
+    if not scores.empty and scores.max() > 0:
+        return int(scores.idxmax())
+    log.warning(
+        "%sNo valid scores found.%s Check your input data."
+    )
+    return None
+
+
+def identify_count_column(df: pd.DataFrame) -> Optional[int]:
+    """Find the column index for count data using regex
+
+    Args:
+        df (Pandas.DataFrame): The DataFrame to search.
+
+    Returns:
+        Optional[int]: The index of the count column, or None if not
+            present.
+    """
+    # Case-insensitive pattern to search
+    count_column_pattern = re.compile(r"(?i)\bcount\b|#|\bquantity\b")
+
+    return next(
+        (
+            i
+            for i, col in enumerate(df.columns)
+            if isinstance(col, str) and count_column_pattern.match(col)
+        ),
+        None,
+    )
+
+
+def get_camera_count(
+    column_number: int, customer_list: pd.DataFrame
+) -> Dict[str, int]:
+    """Count the occurrences of camera names in a specified column.
+
+    Args:
+        column_number (int): The index of the column to analyze.
+        customer_list (Pandas.DataFrame): Raw customer camera data
+            transposed into columns.
+
+    Returns:
+        Dict[str, int]: A dictionary containing camera names as keys and
+            their occurrence counts as values.
+    """
+    # Check if count column exists
+    count_column_index = identify_count_column(customer_list)
+    camera_statistics: Dict[str, int] = {}
+    if count_column_index is not None:
+        count_data = customer_list.iloc[:, count_column_index]
+        camera_statistics = dict(
+            zip(customer_list.iloc[:, 0], count_data)
+        )
+        # Ensure the counts are integers and handle missing value cases
+        return {
+            str(name).strip(): 0 if pd.isna(i) or i == "nan" else int(i)
+            for name, i in camera_statistics.items()
+            if name
+        }
+
+    # Default to counting cameras by name
+    customer_list.T.values.tolist()
+    for value in customer_list[column_number]:
+        value = str(value).strip()
+        if value and "model" not in value.lower():
+            camera_statistics[value] = camera_statistics.get(value, 0) + 1
+    return camera_statistics
+
+
+def get_camera_match(
+        customer_list: pd.DataFrame,
+        verkada_cameras: List[CompatibleModel]
+) -> pd.DataFrame:
+    """Match customer cameras against a list of known Verkada cameras."""
+
+    """"""
+    def match_camera(camera):
+        if pd.isna(camera) or camera == '':
+            return pd.Series({'match_type': 'empty', 'verkada_model': None})
+
+        match, score = process.extractOne(camera, verkada_cameras_list, scorer=fuzz.ratio)
+        _, sort_score = process.extractOne(camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio)
+        _, set_score = process.extractOne(camera, verkada_cameras_list, scorer=fuzz.token_set_ratio)
+
+        if score == 100 or sort_score == 100:
+            return pd.Series({'match_type': f"exact", 'verkada_model': match})
+        elif set_score == 100:
+            return pd.Series({'match_type': f"identified", 'verkada_model': match})
+        elif score >= 80:
+            return pd.Series({'match_type': f"potential", 'verkada_model': match})
+        else:
+            return pd.Series({'match_type': f"unsupported", 'verkada_model': None})
+
+    model_column_index = identify_model_column(customer_list, verkada_cameras)
+    if model_column_index is None:
+        # Handle the case where no suitable column is found
+        return customer_list  # or raise an exception
+
+    model_data = customer_list.iloc[:, model_column_index]
+
+    verkada_cameras_list = [str(camera) for camera in verkada_cameras]
+
+    # Apply the matching function to the model data
+    result = model_data.apply(match_camera)
+    return result
+
+
+def recommend_connectors(customer_cameras: Dict[str, int]):
+    """
+    Generate connector recommendations based on customer camera data and
+    model specifications. This function processes camera counts and
+    calculates the required storage for both low and high megapixel
+    channels.
+
+    Args:
+        customer_cameras (Dict[str, int]): A list of customer cameras and
+            the count of each model.
+
+    Returns:
+        None: This function does not return a value but triggers the
+            recommendation process for connectors.
+
+    Examples:
+        >>> recommend_connectors('model_column_name', raw_camera_data)
+    """
+    low_mp_count = calc.count_low_mp_channels(customer_cameras)
+    low_storage = calc.calculate_low_mp_storage(low_mp_count, RETENTION)
+
+    high_mp_count = calc.count_high_mp_channels(customer_cameras)
+    high_storage = calc.calculate_4k_storage(high_mp_count, RETENTION)
+
+    total_storage = low_storage + high_storage
+    calc.recommend_connector(low_mp_count, high_mp_count, total_storage)
+
