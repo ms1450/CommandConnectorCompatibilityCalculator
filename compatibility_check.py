@@ -99,7 +99,6 @@ def get_manufacturer_list(
     manufacturers: Set[str] = set()
     return manufacturers
 
-
 def find_matching_camera(
     camera_name: str, verkada_cameras: List[CompatibleModel]
 ) -> Optional[CompatibleModel]:
@@ -624,7 +623,6 @@ def main():
         log.critical(
             "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
         )
-
 
 
 # Execute if being ran directly
