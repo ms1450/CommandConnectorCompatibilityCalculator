@@ -4,6 +4,7 @@ from .log import *
 
 from dataclasses import dataclass
 
+
 @dataclass
 class CompatibleModel:
     """Represents a compatible model with its details.

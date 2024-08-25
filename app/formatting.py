@@ -3,6 +3,8 @@ Author: Mehul Sen
 Purpose: The contents of this file are to perform formatting for the customer camera file.
 """
 
+from pandas import Series
+
 from app import CompatibleModel
 from typing import List, Optional, Set
 import nltk
@@ -14,9 +16,7 @@ import os
 NLTK_DATA_PATH = "../misc/nltk_data"
 
 
-def get_camera_set(
-        verkada_list: List[CompatibleModel]
-) -> Set[str]:
+def get_camera_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     """Retrieve a list of camera names from compatible models.
 
     Args:
@@ -29,9 +29,7 @@ def get_camera_set(
         return {model.model_name for model in verkada_list}
 
 
-def get_manufacturer_set(
-        verkada_list: List[CompatibleModel]
-) -> Set[str]:
+def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     """Retrieve a set of camera manufacturer names from compatible models.
 
     Args:
@@ -44,10 +42,9 @@ def get_manufacturer_set(
         return {model.manufacturer.lower() for model in verkada_list}
 
 
-def find_camera_model(
-        camera_name: str,
-        verkada_list: List[CompatibleModel]
-) -> Optional[CompatibleModel]:
+def get_verkada_camera_details(
+    camera_name: Series, verkada_list: List[CompatibleModel]
+) -> List[str]:
     """Find a matching camera by its name.
 
     Args:
@@ -59,13 +56,25 @@ def find_camera_model(
     """
     for model in verkada_list:
         if model.model_name == camera_name:
-            return model
-    return None
+            if model.notes == "nan":
+                return [
+                    model.model_name,
+                    model.manufacturer,
+                    model.minimum_supported_firmware_version,
+                    "",
+                ]
+            else:
+                return [
+                    model.model_name,
+                    model.manufacturer,
+                    model.minimum_supported_firmware_version,
+                    model.notes,
+                ]
+    return ["", "", "", ""]
 
 
 def sanitize_customer_data(
-        customer_list: pd.DataFrame,
-        dictionary: Set[str]
+    customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:
     """Sanitize the Customer List Data by removing whitespaces, IPs, MACs, Special Characters, and any columns with
     headers mentioning Serial Numbers
@@ -79,12 +88,12 @@ def sanitize_customer_data(
     """
 
     if not os.path.isdir(NLTK_DATA_PATH):
-        nltk.download('words', download_dir=NLTK_DATA_PATH)
+        nltk.download("words", download_dir=NLTK_DATA_PATH)
     else:
-        nltk.data.find('corpora/words')
+        nltk.data.find("corpora/words")
 
     # Handle missing values (replace with empty strings)
-    customer_list = customer_list.fillna('')
+    customer_list = customer_list.fillna("")
     # Remove leading/trailing whitespaces
     customer_list = customer_list.astype(str).apply(lambda x: x.str.strip())
 
@@ -108,15 +117,16 @@ def sanitize_customer_data(
         multiple_words = len(words) > 1
 
         filtered_words = [
-            word for word in words
+            word
+            for word in words
             if word.lower() not in all_keywords
-               and not re.match(ip_pattern, word)
-               and not re.match(mac_pattern, word)
-               and not re.match(special_char_pattern, word)
-               and (not multiple_words or not re.match(integer_pattern, word))
+            and not re.match(ip_pattern, word)
+            and not re.match(mac_pattern, word)
+            and not re.match(special_char_pattern, word)
+            and (not multiple_words or not re.match(integer_pattern, word))
         ]
 
-        return ' '.join(filtered_words)
+        return " ".join(filtered_words)
 
     # Apply the remove_keywords function to all cells
     sanitized_df = customer_list.map(remove_keywords)
@@ -124,17 +134,23 @@ def sanitize_customer_data(
     # Remove columns containing IP or MAC addresses
     columns_to_remove = []
     for column in sanitized_df.columns:
-        if (sanitized_df[column].str.match(ip_pattern).any() or
-                sanitized_df[column].str.match(mac_pattern).any()):
+        if (
+            sanitized_df[column].str.match(ip_pattern).any()
+            or sanitized_df[column].str.match(mac_pattern).any()
+        ):
             columns_to_remove.append(column)
 
     # Remove columns with headers containing 'Serial', 'SN', or 'S/N'
-    serial_columns = [col for col in sanitized_df.columns if any(term in col.upper() for term in ['SERIAL', 'SN', 'S/N'])]
+    serial_columns = [
+        col
+        for col in sanitized_df.columns
+        if any(term in col.upper() for term in ["SERIAL", "SN", "S/N"])
+    ]
     columns_to_remove.extend(serial_columns)
     sanitized_df = sanitized_df.drop(columns=columns_to_remove)
 
     # Remove empty rows and columns
-    sanitized_df = sanitized_df.dropna(how='all').dropna(axis=1, how='all')
+    sanitized_df = sanitized_df.dropna(how="all").dropna(axis=1, how="all")
     return sanitized_df
 
 

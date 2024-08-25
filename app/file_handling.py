@@ -1,4 +1,3 @@
-
 from app import log, CompatibleModel
 
 import pandas as pd
@@ -18,11 +17,13 @@ def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
 
     compatible_models = []
     # Read the CSV file, skipping the first 5 rows and using no header
-    df = pd.read_csv(filename, skiprows=5, header=None, encoding='UTF-8')
+    df = pd.read_csv(filename, skiprows=5, header=None, encoding="UTF-8")
 
     # Ensure that the DataFrame has at least 4 columns
     if df.shape[1] < 4:
-        raise ValueError("CSV file does not have the expected number of columns.")
+        raise ValueError(
+            "CSV file does not have the expected number of columns."
+        )
 
     # Iterate over each row in the DataFrame
     for _, row in df.iterrows():
@@ -34,7 +35,7 @@ def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
             model_name=row[1].lower(),
             manufacturer=str(row[0]),
             minimum_supported_firmware_version=str(row[2]),
-            notes=str(row[3])
+            notes=str(row[3]),
         )
         compatible_models.append(model)
     return compatible_models

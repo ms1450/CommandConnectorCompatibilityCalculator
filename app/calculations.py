@@ -7,14 +7,15 @@ Purpose: The contents of this file are to perform various calculations
 """
 
 from typing import Dict, List, Optional, TypedDict
+
 from formatting import get_camera_set
 import pandas as pd
 import re
 from pandas import Series
 import numpy as np
 from thefuzz import fuzz, process
-from app import log, CompatibleModel, formatting
-import calc
+from app import log, CompatibleModel
+
 
 class Connector(TypedDict):
     """
@@ -91,8 +92,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 
 def identify_model_column(
-        customer_list: pd.DataFrame,
-        verkada_cameras: List[CompatibleModel]
+    customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> Optional[Series]:
     verkada_camera_list = get_camera_set(verkada_cameras)
     """Identify the column with the camera models in the customer list
@@ -104,6 +104,7 @@ def identify_model_column(
     Returns:
         Optional[Series]: Column headers for the camera model column        
     """
+
     def calculate_score(column_data: pd.DataFrame) -> float:
         """Calculate the score of the column.
 
@@ -114,18 +115,20 @@ def identify_model_column(
             float: The calculated score.
         """
         # Remove empty strings and spaces
-        cleaned_data = column_data.replace(['', ' '], np.nan).dropna()
+        cleaned_data = column_data.replace(["", " "], np.nan).dropna()
 
         # Check if the cleaned data is empty
         if cleaned_data.empty:
             return 0
 
         # Try to convert to numeric
-        numeric_column = pd.to_numeric(cleaned_data, errors='coerce')
+        numeric_column = pd.to_numeric(cleaned_data, errors="coerce")
 
         # If all values are successfully converted to numeric, return 0
         if numeric_column.notna().all():
-            log.info(f"Detected Numeric Column '{column_data.name}', Forcing Score: 0")
+            log.info(
+                f"Detected Numeric Column '{column_data.name}', Forcing Score: 0"
+            )
             return 0
 
         column_values = set()
@@ -133,7 +136,9 @@ def identify_model_column(
 
         for camera in column_data.dropna():  # Remove NaN values
             if isinstance(camera, str):
-                if camera and camera not in column_values:  # Skip empty strings
+                if (
+                    camera and camera not in column_values
+                ):  # Skip empty strings
                     # Perform fuzzy matching and accumulate the score
                     score = process.extractOne(
                         camera,
@@ -141,24 +146,23 @@ def identify_model_column(
                         scorer=fuzz.token_sort_ratio,
                     )[1]
                     column_score += score
-                    column_values.add(camera)  # Add to set to avoid duplicate scoring
+                    column_values.add(
+                        camera
+                    )  # Add to set to avoid duplicate scoring
 
         return column_score
+
     # Apply the score calculation to each column in the DataFrame
     scores = customer_list.apply(calculate_score)
     log.info("Scores: \n" + scores.to_string())
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
         return scores.idxmax()
-    log.warning(
-        "%sNo valid scores found.%s Check your input data."
-    )
+    log.warning("%sNo valid scores found.%s Check your input data.")
     return None
 
 
-def identify_count_column(
-        customer_list: pd.DataFrame
-) -> Optional[Series]:
+def identify_count_column(customer_list: pd.DataFrame) -> Optional[Series]:
     """Identify the column with the number of cameras in the customer list
 
     Args:
@@ -181,8 +185,7 @@ def identify_count_column(
 
 
 def get_camera_count(
-        customer_list: pd.DataFrame,
-        results: pd.DataFrame
+    customer_list: pd.DataFrame, results: pd.DataFrame
 ) -> pd.DataFrame:
     """Count the occurrences of camera names in a specified column.
 
@@ -197,18 +200,19 @@ def get_camera_count(
 
     if count_column_name:
         log.info("Found Camera Count Column: %s", count_column_name)
-        results['count'] = customer_list[count_column_name]
+        results["count"] = customer_list[count_column_name]
     else:
         log.info("No Camera Count Found, calculating using model names")
-        results['count'] = results.groupby('name')['name'].transform('count')
-    results = results.drop_duplicates(['name'])
-    results = results[(results['name'].notna()) | (results['match_type'] != 'empty')]
+        results["count"] = results.groupby("name")["name"].transform("count")
+    results = results.drop_duplicates(["name"])
+    results = results[
+        (results["name"].notna()) | (results["match_type"] != "empty")
+    ]
     return results
 
 
 def get_camera_match(
-        customer_list: pd.DataFrame,
-        verkada_cameras: List[CompatibleModel]
+    customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> pd.DataFrame:
     """Match customer cameras against a list of known Verkada cameras.
 
@@ -219,31 +223,61 @@ def get_camera_match(
     Returns:
         pd.DataFrame: The matched cameras with count.
     """
+
     def match_camera(camera):
-        if pd.isna(camera) or camera == '':
-            return pd.Series({'name': None, 'match_type': 'empty', 'verkada_model': None})
+        if pd.isna(camera) or camera == "":
+            return pd.Series(
+                {"name": None, "match_type": "empty", "verkada_model": None}
+            )
 
-        match, score = process.extractOne(camera, verkada_cameras_list, scorer=fuzz.ratio)
-        _, sort_score = process.extractOne(camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio)
-        _, set_score = process.extractOne(camera, verkada_cameras_list, scorer=fuzz.token_set_ratio)
-
+        match, score = process.extractOne(
+            camera, verkada_cameras_list, scorer=fuzz.ratio
+        )
+        _, sort_score = process.extractOne(
+            camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+        )
+        _, set_score = process.extractOne(
+            camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
+        )
         if score == 100 or sort_score == 100:
-            return pd.Series({'name': camera, 'match_type': f"exact", 'verkada_model': match})
+            return pd.Series(
+                {
+                    "name": camera,
+                    "match_type": f"exact",
+                    "verkada_model": match,
+                }
+            )
         elif set_score == 100:
-            return pd.Series({'name': camera, 'match_type': f"identified", 'verkada_model': match})
+            return pd.Series(
+                {
+                    "name": camera,
+                    "match_type": f"identified",
+                    "verkada_model": match,
+                }
+            )
         elif score >= 80:
-            return pd.Series({'name': camera, 'match_type': f"potential", 'verkada_model': match})
+            return pd.Series(
+                {
+                    "name": camera,
+                    "match_type": f"potential",
+                    "verkada_model": match,
+                }
+            )
         else:
-            return pd.Series({'name': camera, 'match_type': f"unsupported", 'verkada_model': None})
+            return pd.Series(
+                {
+                    "name": camera,
+                    "match_type": f"unsupported",
+                    "verkada_model": None,
+                }
+            )
 
     camera_column = identify_model_column(customer_list, verkada_cameras)
-
     log.info("Highest Scoring Camera Column: " + camera_column)
     model_data = customer_list[camera_column]
-    verkada_cameras_list = [str(camera) for camera in verkada_cameras]
-
-    # Apply the matching function to the model data
+    verkada_cameras_list = get_camera_set(verkada_cameras)
     result = model_data.apply(match_camera)
+
     result = get_camera_count(customer_list, result)
     log.info("First 10 Matched Results: \n" + result.head(10).to_string())
     return result
@@ -566,4 +600,3 @@ def recommend_connectors(customer_cameras: Dict[str, int]):
 
     total_storage = low_storage + high_storage
     recommend_connector(low_mp_count, high_mp_count, total_storage)
-
