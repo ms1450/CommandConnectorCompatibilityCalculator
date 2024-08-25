@@ -11,6 +11,7 @@ from formatting import get_camera_set
 import pandas as pd
 import re
 from pandas import Series
+import numpy as np
 from thefuzz import fuzz, process
 from app import log, CompatibleModel, formatting
 import calc
@@ -112,11 +113,19 @@ def identify_model_column(
         Returns:
             float: The calculated score.
         """
-        # Convert column data to numeric, errors='coerce' will turn non-numeric values into NaN
-        numeric_column = pd.to_numeric(column_data, errors='coerce')
+        # Remove empty strings and spaces
+        cleaned_data = column_data.replace(['', ' '], np.nan).dropna()
 
-        # Check if all non-NaN values are numeric
-        if numeric_column.notna().empty or numeric_column.notna().astype(bool).all():
+        # Check if the cleaned data is empty
+        if cleaned_data.empty:
+            return 0
+
+        # Try to convert to numeric
+        numeric_column = pd.to_numeric(cleaned_data, errors='coerce')
+
+        # If all values are successfully converted to numeric, return 0
+        if numeric_column.notna().all():
+            log.info(f"Detected Numeric Column '{column_data.name}', Forcing Score: 0")
             return 0
 
         column_values = set()
@@ -191,8 +200,9 @@ def get_camera_count(
         results['count'] = customer_list[count_column_name]
     else:
         log.info("No Camera Count Found, calculating using model names")
-        results['count'] = results.groupby('name')['name'].transform('size')
+        results['count'] = results.groupby('name')['name'].transform('count')
     results = results.drop_duplicates(['name'])
+    results = results[(results['name'].notna()) | (results['match_type'] != 'empty')]
     return results
 
 
@@ -235,6 +245,7 @@ def get_camera_match(
     # Apply the matching function to the model data
     result = model_data.apply(match_camera)
     result = get_camera_count(customer_list, result)
+    log.info("First 10 Matched Results: \n" + result.head(10).to_string())
     return result
 
 

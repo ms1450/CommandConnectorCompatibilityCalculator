@@ -4,13 +4,14 @@ Purpose: The contents of this file are to perform formatting for the customer ca
 """
 
 from app import CompatibleModel
-
 from typing import List, Optional, Set
-
 import nltk
 import pandas as pd
 import re
 from nltk.corpus import words
+import os
+
+NLTK_DATA_PATH = "../misc/nltk_data"
 
 
 def get_camera_set(
@@ -77,10 +78,10 @@ def sanitize_customer_data(
         pd.DataFrame: Sanitized Customer List.
     """
 
-    try:
-        nltk.data.find('tokenizers/words')
-    except LookupError:
-        nltk.download('words')
+    if not os.path.isdir(NLTK_DATA_PATH):
+        nltk.download('words', download_dir=NLTK_DATA_PATH)
+    else:
+        nltk.data.find('corpora/words')
 
     # Handle missing values (replace with empty strings)
     customer_list = customer_list.fillna('')
@@ -92,6 +93,7 @@ def sanitize_customer_data(
     all_keywords = dictionary | english_words
 
     # Regex Patterns
+    integer_pattern = r"^[-+]?\d+$"
     ip_pattern = r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
     mac_pattern = r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
     special_char_pattern = r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
@@ -99,14 +101,21 @@ def sanitize_customer_data(
     def remove_keywords(value: str) -> str:
         if not value:
             return value
+
         words = value.split()
+
+        # Check if there's more than one word
+        multiple_words = len(words) > 1
+
         filtered_words = [
             word for word in words
             if word.lower() not in all_keywords
-            and not re.match(ip_pattern, word)
-            and not re.match(mac_pattern, word)
-            and not re.match(special_char_pattern, word)
+               and not re.match(ip_pattern, word)
+               and not re.match(mac_pattern, word)
+               and not re.match(special_char_pattern, word)
+               and (not multiple_words or not re.match(integer_pattern, word))
         ]
+
         return ' '.join(filtered_words)
 
     # Apply the remove_keywords function to all cells
