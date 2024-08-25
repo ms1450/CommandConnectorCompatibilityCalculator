@@ -761,7 +761,6 @@ def main():
         "./Camera Compatibility Sheets/customer_sheet_7.csv"
     )
     import app
-    santize_customer_data()
     # NOTE: Uncomment to print raw csv
     # tabulate_data(
     #     [customer_cameras_raw.columns.tolist()]

@@ -40,7 +40,7 @@ def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
     return compatible_models
 
 
-def read_customer_list(filename: str) -> pd.DataFrame:
+def parse_customer_list(filename: str) -> pd.DataFrame:
     """Read a CSV file and transpose its rows into columns.
 
     Args:

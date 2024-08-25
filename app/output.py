@@ -3,6 +3,8 @@
 from colorama import Fore, Style
 from tabulate import tabulate
 import pandas as pd
+from app import CompatibleModel
+from typing import Dict, List, Tuple, Optional
 
 
 def tabulate_data(data: pd.DataFrame) -> None:
@@ -98,7 +100,7 @@ def print_list_data(
         columns=plain_headers,
     )
     # Strip color codes
-    df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
+# df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
 
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
