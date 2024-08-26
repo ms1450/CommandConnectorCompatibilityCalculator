@@ -8,12 +8,11 @@ Purpose: The contents of this file are to perform various calculations
 
 # Standard library imports
 import re
-from typing import List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict
 
 # Third-party library imports
 import numpy as np
 import pandas as pd
-from pandas import Series
 from thefuzz import fuzz, process
 
 # Local/application-specific imports
@@ -99,7 +98,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 def identify_model_column(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
-) -> Optional[Series]:
+) -> Optional[int]:
     """Identify the column with the camera models in the customer list
 
     Args:
@@ -111,7 +110,7 @@ def identify_model_column(
     """
     verkada_camera_list = get_camera_set(verkada_cameras)
 
-    def calculate_score(column_data: pd.DataFrame) -> float:
+    def calculate_score(column_data: pd.Series) -> float:
         """Calculate the score of the column.
 
         Args:
@@ -142,34 +141,33 @@ def identify_model_column(
         column_score = 0
 
         for camera in column_data.dropna():  # Remove NaN values
-            if isinstance(camera, str):
-                if (
-                    camera and camera not in column_values
-                ):  # Skip empty strings
-                    # Perform fuzzy matching and accumulate the score
-                    score = process.extractOne(
-                        camera,
-                        verkada_camera_list,
-                        scorer=fuzz.token_sort_ratio,
-                    )[1]
-                    column_score += score
-                    column_values.add(
-                        camera
-                    )  # Add to set to avoid duplicate scoring
+            if isinstance(camera, str) and (
+                camera and camera not in column_values
+            ):
+                score = process.extractOne(
+                    camera,
+                    list(verkada_camera_list),
+                    scorer=fuzz.token_sort_ratio,
+                )[1]
+                column_score += score
+                column_values.add(
+                    camera
+                )  # Add to set to avoid duplicate scoring
 
         return column_score
 
     # Apply the score calculation to each column in the DataFrame
     scores = customer_list.apply(calculate_score)
     log.info("Scores: \n '%s'", scores.to_string())
+
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
-        return scores.idxmax()
+        return int(scores.idxmax())
     log.warning("%sNo valid scores found.%s Check your input data.")
     return None
 
 
-def identify_count_column(customer_list: pd.DataFrame) -> Optional[Series]:
+def identify_count_column(customer_list: pd.DataFrame) -> Optional[int]:
     """Identify the column with the number of cameras in the customer list
 
     Args:
@@ -183,8 +181,8 @@ def identify_count_column(customer_list: pd.DataFrame) -> Optional[Series]:
 
     return next(
         (
-            col
-            for col in customer_list.columns
+            i
+            for i, col in enumerate(customer_list.columns)
             if isinstance(col, str) and count_column_pattern.search(col)
         ),
         None,
@@ -203,9 +201,7 @@ def get_camera_count(
     Returns:
         Dict[str, int]: A dictionary containing camera names and counts.
     """
-    count_column_name = identify_count_column(customer_list)
-
-    if count_column_name:
+    if count_column_name := identify_count_column(customer_list):
         log.info("Found Camera Count Column: %s", count_column_name)
         results["count"] = customer_list[count_column_name]
     else:
@@ -298,9 +294,24 @@ def compile_camera_mp_channels(
         verkada_camera_list (List[CompatibleModel]): The list of known cameras.
 
     Returns:
-        List[CompatibleModel]: The compiled camera models.
+        pd.DataFrame: A DataFrame containing camera specifications for
+        cameras with 5 megapixels or fewer.
+
+    Raises:
+        FileNotFoundError: If the "Camera Specs.csv" file does not exist.
+
+    Examples:
+        >>> low_mp_cameras = compile_low_mp_cameras()
+        >>> print(low_mp_cameras.head())
+            Manufacturer   Model Name   MP  Channels
+        0             ACTi          A71  4.0       1.0
+        1   Arecont Vision  AV02CID-200  2.1       1.0
+        5   Arecont Vision     AV4656DN  4.0       3.0
+        6   Arecont Vision     AV4956DN  4.0       2.0
+        11        Avigilon   1.0-H3-DC1  1.0       1.0
     """
-    camera_map = pd.read_csv("../Camera Specs.csv")
+
+    camera_map = pd.read_csv("./Camera Specs.csv")
     # Iterate through each row in the DataFrame
     for _, row in camera_map.iterrows():
         model_name = row["Model Name"]
@@ -315,122 +326,122 @@ def compile_camera_mp_channels(
     return verkada_camera_list
 
 
-# def compile_low_mp_cameras() -> pd.DataFrame:
-#     """Compile a DataFrame of cameras with 5 megapixels or fewer.
-#
-#     This function reads camera specifications from a CSV file and filters
-#     the data to return only those cameras that have a megapixel rating of
-#     5 or lower.
-#
-#     Returns:
-#         pd.DataFrame: A DataFrame containing camera specifications for
-#         cameras with 5 megapixels or fewer.
-#
-#     Raises:
-#         FileNotFoundError: If the "Camera Specs.csv" file does not exist.
-#
-#     Examples:
-#         >>> low_mp_cameras = compile_low_mp_cameras()
-#         >>> print(low_mp_cameras.head())
-#               Manufacturer   Model Name   MP  Channels
-#         0             ACTi          A71  4.0       1.0
-#         1   Arecont Vision  AV02CID-200  2.1       1.0
-#         5   Arecont Vision     AV4656DN  4.0       3.0
-#         6   Arecont Vision     AV4956DN  4.0       2.0
-#         11        Avigilon   1.0-H3-DC1  1.0       1.0
-#     """
-#
-#     camera_map = pd.read_csv("../Camera Specs.csv")
-#     return camera_map[camera_map["MP"] <= 5]
+def compile_low_mp_cameras() -> pd.DataFrame:
+    """Compile a DataFrame of cameras with 5 megapixels or fewer.
+
+    This function reads camera specifications from a CSV file and filters
+    the data to return only those cameras that have a megapixel rating of
+    5 or lower.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing camera specifications for
+        cameras with 5 megapixels or fewer.
+
+    Raises:
+        FileNotFoundError: If the "Camera Specs.csv" file does not exist.
+
+    Examples:
+        >>> low_mp_cameras = compile_low_mp_cameras()
+        >>> print(low_mp_cameras.head())
+            Manufacturer   Model Name   MP  Channels
+        0             ACTi          A71  4.0       1.0
+        1   Arecont Vision  AV02CID-200  2.1       1.0
+        5   Arecont Vision     AV4656DN  4.0       3.0
+        6   Arecont Vision     AV4956DN  4.0       2.0
+        11        Avigilon   1.0-H3-DC1  1.0       1.0
+    """
+
+    camera_map = pd.read_csv("./Camera Specs.csv")
+    return camera_map[camera_map["MP"] <= 5]
 
 
-# def compile_high_mp_cameras() -> pd.DataFrame:
-#     """Compile a DataFrame of cameras with more than 5 megapixels.
-#
-#     This function reads camera specifications from a CSV file and filters
-#     the data to return only those cameras that have a megapixel rating of
-#     more than 5 megapixels.
-#
-#     Returns:
-#         pd.DataFrame: A DataFrame containing camera specifications for
-#         cameras with more than 5 megapixels.
-#
-#     Raises:
-#         FileNotFoundError: If the "Camera Specs.csv" file does not exist.
-#
-#     Examples:
-#         >>> high_mp_cameras = compile_high_mp_cameras()
-#         >>> print(high_mp_cameras.head())
-#              Manufacturer Model Name    MP  Channels
-#         2  Arecont Vision  AV12176DN  12.0       5.0
-#         3  Arecont Vision  AV20175DN  20.0       5.0
-#         4  Arecont Vision  AV20275DN  20.0       4.0
-#         7  Arecont Vision   AV8185DN   8.0       5.0
-#         8             Ava   360-W-30  12.0       1.0
-#     """
-#
-#     camera_map = pd.read_csv("../Camera Specs.csv")
-#     return camera_map[camera_map["MP"] > 5]
+def compile_high_mp_cameras() -> pd.DataFrame:
+    """Compile a DataFrame of cameras with more than 5 megapixels.
+
+    This function reads camera specifications from a CSV file and filters
+    the data to return only those cameras that have a megapixel rating of
+    more than 5 megapixels.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing camera specifications for
+        cameras with more than 5 megapixels.
+
+    Raises:
+        FileNotFoundError: If the "Camera Specs.csv" file does not exist.
+
+    Examples:
+        >>> high_mp_cameras = compile_high_mp_cameras()
+        >>> print(high_mp_cameras.head())
+            Manufacturer Model Name    MP  Channels
+        2  Arecont Vision  AV12176DN  12.0       5.0
+        3  Arecont Vision  AV20175DN  20.0       5.0
+        4  Arecont Vision  AV20275DN  20.0       4.0
+        7  Arecont Vision   AV8185DN   8.0       5.0
+        8             Ava   360-W-30  12.0       1.0
+    """
+
+    camera_map = pd.read_csv("./Camera Specs.csv")
+    return camera_map[camera_map["MP"] > 5]
 
 
-# def count_low_mp_channels(customer_cameras: Dict[str, int]) -> int:
-#     """Calculate the total number of channels for low megapixel cameras.
-#
-#     This function takes a dictionary of customer cameras and computes the total
-#     number of channels for those cameras that are classified as low megapixel.
-#     It merges the camera data with a predefined list of low megapixel cameras
-#     and calculates the total channels based on the count of each camera model.
-#
-#     Args:
-#         customer_cameras (Dict[str, int]): A dictionary where keys are camera
-#         model names and values are the counts of each model.
-#
-#     Returns:
-#         int: The total number of channels for low megapixel cameras.
-#     """
-#     cameras = pd.DataFrame(
-#         list(customer_cameras.items()), columns=["Model", "Count"]
-#     )  # Convert to DataFrame
-#     low_mp_list = compile_low_mp_cameras()
-#     merged_df = pd.merge(
-#         cameras, low_mp_list, left_on="Model", right_on="Model Name"
-#     )
-#
-#     merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
-#     log.debug("Low mp channels:\n%s", merged_df.head())
-#
-#     return merged_df["Total Channels"].sum()
+def count_low_mp_channels(customer_cameras: Dict[str, int]) -> int:
+    """Calculate the total number of channels for low megapixel cameras.
 
-#
-# def count_high_mp_channels(customer_cameras: Dict[str, int]) -> int:
-#     """Calculate the total number of channels for high megapixel cameras.
-#
-#     This function takes a dictionary of customer cameras and computes the
-#     total number of channels for those cameras that are classified as high
-#     megapixel. It merges the camera data with a predefined list of high
-#     megapixel cameras and calculates the total channels based on the count
-#     of each camera model.
-#
-#     Args:
-#         customer_cameras (Dict[str, int]): A dictionary where keys are camera
-#         model names and values are the counts of each model.
-#
-#     Returns:
-#         int: The total number of channels for high megapixel cameras.
-#     """
-#
-#     cameras = pd.DataFrame(
-#         list(customer_cameras.items()), columns=["Model", "Count"]
-#     )  # Convert to DataFrame
-#     high_mp_list = compile_high_mp_cameras()
-#     merged_df = pd.merge(
-#         cameras, high_mp_list, left_on="Model", right_on="Model Name"
-#     )
-#
-#     merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
-#     log.debug("high mp channels:\n%s", merged_df.head())
-#
-#     return merged_df["Total Channels"].sum()
+    This function takes a dictionary of customer cameras and computes the total
+    number of channels for those cameras that are classified as low megapixel.
+    It merges the camera data with a predefined list of low megapixel cameras
+    and calculates the total channels based on the count of each camera model.
+
+    Args:
+        customer_cameras (Dict[str, int]): A dictionary where keys are camera
+        model names and values are the counts of each model.
+
+    Returns:
+        int: The total number of channels for low megapixel cameras.
+    """
+    cameras = pd.DataFrame(
+        list(customer_cameras.items()), columns=["Model", "Count"]
+    )  # Convert to DataFrame
+    low_mp_list = compile_low_mp_cameras()
+    merged_df = pd.merge(
+        cameras, low_mp_list, left_on="Model", right_on="Model Name"
+    )
+
+    merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
+    log.debug("Low mp channels:\n%s", merged_df.head())
+
+    return merged_df["Total Channels"].sum()
+
+
+def count_high_mp_channels(customer_cameras: Dict[str, int]) -> int:
+    """Calculate the total number of channels for high megapixel cameras.
+
+    This function takes a dictionary of customer cameras and computes the
+    total number of channels for those cameras that are classified as high
+    megapixel. It merges the camera data with a predefined list of high
+    megapixel cameras and calculates the total channels based on the count
+    of each camera model.
+
+    Args:
+        customer_cameras (Dict[str, int]): A dictionary where keys are camera
+        model names and values are the counts of each model.
+
+    Returns:
+        int: The total number of channels for high megapixel cameras.
+    """
+
+    cameras = pd.DataFrame(
+        list(customer_cameras.items()), columns=["Model", "Count"]
+    )  # Convert to DataFrame
+    high_mp_list = compile_high_mp_cameras()
+    merged_df = pd.merge(
+        cameras, high_mp_list, left_on="Model", right_on="Model Name"
+    )
+
+    merged_df["Total Channels"] = merged_df["Count"] * merged_df["Channels"]
+    log.debug("high mp channels:\n%s", merged_df.head())
+
+    return merged_df["Total Channels"].sum()
 
 
 def calculate_low_mp_storage(channels: int, retention: int) -> float:
@@ -609,10 +620,10 @@ def calculate_mp(width, height):
 def count_mp(
     camera_dataframe: pd.DataFrame, verkada_camera_list: List[CompatibleModel]
 ) -> List[int]:
-    """Count the number of low and high channels required in a dataframe.
+    """Count the number of low and high channels required in a DataFrame.
 
     Args:
-        camera_dataframe (pd.DataFrame): A dataframe containing the camera models.
+        camera_dataframe (pd.DataFrame): A DataFrame containing the camera models.
         verkada_camera_list (List[CompatibleModel]): A list of CompatibleModel
 
     Returns:
@@ -625,15 +636,13 @@ def count_mp(
     for _, row in camera_dataframe.iterrows():
         if row["verkada_model"] is not None:
             # Find the corresponding camera model in the list
-            camera_model = find_verkada_camera(
+            if camera_model := find_verkada_camera(
                 str(row["verkada_model"]), verkada_camera_list
-            )
-
-            if camera_model:
+            ):
                 # Assuming camera_model has an attribute 'mp' for megapixels
                 if camera_model.mp <= 5:
                     low_count += int(row["count"])
-                elif camera_model.mp > 5:
+                else:
                     high_count += int(row["count"])
 
     return [low_count, high_count]

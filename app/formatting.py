@@ -1,19 +1,21 @@
 """
 Author: Mehul Sen
-Purpose: The contents of this file are to perform formatting for the customer camera file.
+Purpose: The contents of this file are to perform formatting for the
+    customer camera file.
 """
 
 import os
 import re
 from typing import List, Set
 import pandas as pd
-import nltk
 from pandas import Series
+from nltk.downloader import download
+from nltk.data import find
 from nltk.corpus import words
 
 from app import CompatibleModel
 
-NLTK_DATA_PATH = "../misc/nltk_data"
+NLTK_DATA_PATH = "./misc/nltk_data"
 
 
 def get_camera_set(verkada_list: List[CompatibleModel]) -> Set[str]:
@@ -48,10 +50,14 @@ def find_verkada_camera(
     verkada_model: str, verkada_camera_list: List[CompatibleModel]
 ) -> CompatibleModel | None:
     """Finds the Verkada camera model in the list."""
-    for camera in verkada_camera_list:
-        if camera.model_name.lower() == verkada_model.lower():
-            return camera
-    return None  # Return None if the camera model is not found
+    return next(
+        (
+            camera
+            for camera in verkada_camera_list
+            if camera.model_name.lower() == verkada_model.lower()
+        ),
+        None,
+    )
 
 
 def get_verkada_camera_details(
@@ -66,28 +72,36 @@ def get_verkada_camera_details(
     Returns:
         List[str]: Matching camera model.
     """
-    for model in verkada_list:
-        if model.model_name == camera_name:
-            if model.notes == "nan":
-                return [
+    # Return with next to save memory
+    return next(
+        (
+            (
+                [
                     model.model_name,
                     model.manufacturer,
                     model.minimum_supported_firmware_version,
                     "",
                 ]
-            return [
-                model.model_name,
-                model.manufacturer,
-                model.minimum_supported_firmware_version,
-                model.notes,
-            ]
-    return ["", "", "", ""]
+                if model.notes == "nan"
+                else [
+                    model.model_name,
+                    model.manufacturer,
+                    model.minimum_supported_firmware_version,
+                    model.notes,
+                ]
+            )
+            for model in verkada_list
+            if model.model_name == camera_name
+        ),
+        ["", "", "", ""],
+    )
 
 
 def sanitize_customer_data(
     customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:
-    """Sanitize Customer List: remove whitespace, IPs, MACs, special chars, and serial number columns
+    """Sanitize Customer List: remove whitespace, IPs, MACs, special
+    chars, and serial number columns
 
     Args:
         customer_list (pd.DataFrame): Customer List.
@@ -98,9 +112,9 @@ def sanitize_customer_data(
     """
 
     if not os.path.isdir(NLTK_DATA_PATH):
-        nltk.download("words", download_dir=NLTK_DATA_PATH)
+        download("words", download_dir=NLTK_DATA_PATH)
     else:
-        nltk.data.find("corpora/words")
+        find("corpora/words")
 
     # Handle missing values (replace with empty strings)
     customer_list = customer_list.fillna("")
@@ -108,13 +122,20 @@ def sanitize_customer_data(
     customer_list = customer_list.astype(str).apply(lambda x: x.str.strip())
 
     # Extract english words from NLTK
-    english_words = set(word.lower() for word in words.words())
+    english_words = {word.lower() for word in words.words()}
     all_keywords = dictionary | english_words
 
     # Regex Patterns
     integer_pattern = r"^[-+]?\d+$"
-    ip_pattern = r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-    mac_pattern = r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
+    ip_pattern = (
+        r"^((25[0-5]|2[0-4][0-9]|"
+        r"[01]?[0-9][0-9]?)\.){3}(25[0-5]|"
+        r"2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    )
+    mac_pattern = (
+        r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|"
+        r"^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
+    )
     special_char_pattern = r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
 
     def remove_keywords(value: str) -> str:

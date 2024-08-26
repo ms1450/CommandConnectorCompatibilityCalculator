@@ -1,3 +1,5 @@
+"""Typing for thefuzz module"""
+
 # thefuzz.pyi
 
 from typing import Any, Callable, List, Tuple, Union

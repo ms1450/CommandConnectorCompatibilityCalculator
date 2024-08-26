@@ -11,7 +11,7 @@ from tabulate import tabulate
 import pandas as pd
 
 from app import CompatibleModel
-from app.formatting import get_verkada_camera_details
+from app.formatting import get_verkada_camera_details, strip_ansi_codes
 
 
 def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
@@ -66,35 +66,33 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     output.sort(key=lambda x: x[2], reverse=True)
     print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
 
-    # plain_headers = [
-    #     "Camera Name",
-    #     "Count",
-    #     "Match Type",
-    #     "Manufacturer",
-    #     "Model",
-    #     "Min Firmware Version",
-    #     "Notes",
-    # ]
+    plain_headers = [
+        "Camera Name",
+        "Count",
+        "Match Type",
+        "Manufacturer",
+        "Model",
+        "Min Firmware Version",
+        "Notes",
+    ]
 
     # Convert to Pandas DataFrame
-    # df = pd.DataFrame(
-    #     output,
-    #     columns=plain_headers,
-    # )
+    df = pd.DataFrame(
+        output,
+        columns=plain_headers,
+    )
 
     # Strip color codes
+    df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
 
-
-# df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
-
-# NOTE: Uncomment to write truncated to terminal
-# print(df.head())
-# NOTE: Uncomment to write to html file
-# df.to_html("camera_models.html", index=False)
-# NOTE: Uncomment to write output to a csv
-# with open("camera_models.txt", "w", encoding="UTF-8") as f:
-#     f.write(
-#         tabulate(
-#             df.values.tolist(), headers=plain_headers, tablefmt="simple"
-#         )
-#     )
+    # NOTE: Uncomment to write truncated to terminal
+    print(df.head())
+    # NOTE: Uncomment to write to html file
+    # df.to_html("camera_models.html", index=False)
+    # NOTE: Uncomment to write output to a csv
+    # with open("camera_models.txt", "w", encoding="UTF-8") as f:
+    #     f.write(
+    #         tabulate(
+    #             df.values.tolist(), headers=plain_headers, tablefmt="simple"
+    #         )
+    #     )
