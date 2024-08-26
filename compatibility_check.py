@@ -193,7 +193,6 @@ def identify_model_column(
     # Apply the score calculation to each column in the DataFrame
     scores = customer_cameras_raw.apply(calculate_column_score)
 
-
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
         return scores.idxmax()
