@@ -60,7 +60,7 @@ def find_verkada_camera(
     )
 
 
-def get_verkada_camera_details(
+def list_verkada_camera_details(
     camera_name: Series, verkada_list: List[CompatibleModel]
 ) -> List[str]:
     """Find a matching camera by its name.

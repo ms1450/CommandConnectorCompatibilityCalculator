@@ -11,7 +11,7 @@ from tabulate import tabulate
 import pandas as pd
 
 from app import CompatibleModel
-from app.formatting import get_verkada_camera_details, strip_ansi_codes
+from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
 def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
@@ -38,7 +38,7 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
         camera_count = int(row["count"])
         match_type = colorize_type(row["match_type"])
         v_camera_name, v_manufacturer, v_min_firmware, v_notes = (
-            get_verkada_camera_details(row["verkada_model"], verkada_list)
+            list_verkada_camera_details(row["verkada_model"], verkada_list)
         )
         output.append(
             [

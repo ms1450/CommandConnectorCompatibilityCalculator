@@ -1,4 +1,4 @@
-"""Streamline imports"""
+"""Streamline imports across all scripts."""
 
 from dataclasses import dataclass
 

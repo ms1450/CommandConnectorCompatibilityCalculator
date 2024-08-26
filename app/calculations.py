@@ -13,13 +13,15 @@ from typing import Dict, List, Optional, TypedDict
 # Third-party library imports
 import numpy as np
 import pandas as pd
+from pandas import Series
 from thefuzz import fuzz, process
 
 # Local/application-specific imports
 from app import log, CompatibleModel
 from app.formatting import get_camera_set, find_verkada_camera
 
-RETENTION = 30  # Required storage in days
+# Required storage in days
+RETENTION = 30
 
 
 class Connector(TypedDict):
@@ -96,9 +98,9 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 )
 
 
-def identify_model_column(
+def identify_model_column_name(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
-) -> Optional[int]:
+) -> Optional[Series]:
     """Identify the column with the camera models in the customer list
 
     Args:
@@ -162,7 +164,7 @@ def identify_model_column(
 
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
-        return int(scores.idxmax())
+        return scores.idxmax()
     log.warning("%sNo valid scores found.%s Check your input data.")
     return None
 
@@ -274,7 +276,7 @@ def get_camera_match(
             }
         )
 
-    camera_column = identify_model_column(customer_list, verkada_cameras)
+    camera_column = identify_model_column_name(customer_list, verkada_cameras)
     log.info("Highest Scoring Camera Column: '%s'", camera_column)
     model_data = customer_list[camera_column]
     verkada_cameras_list = get_camera_set(verkada_cameras)
@@ -311,7 +313,7 @@ def compile_camera_mp_channels(
         11        Avigilon   1.0-H3-DC1  1.0       1.0
     """
 
-    camera_map = pd.read_csv("./Camera Specs.csv")
+    camera_map = pd.read_csv("../Camera Specs.csv")
     # Iterate through each row in the DataFrame
     for _, row in camera_map.iterrows():
         model_name = row["Model Name"]
