@@ -6,20 +6,32 @@ Purpose: Import a list of third-party cameras and return to the terminal
     which cameras are compatible with the cloud connector.
 """
 
-import csv
 import re
-import nltk
-from nltk.corpus import words
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Set, List, Optional, Tuple, Union
 
 import colorama
+import pandas as pd
 from colorama import Fore, Style
+from nltk.corpus import words
 from tabulate import tabulate
 from thefuzz import fuzz, process
 
+import app.calculations as calc
+from app.sanitize import (
+    remove_keywords,
+    is_ip_address,
+    is_mac_address,
+    remove_ip_mac,
+    is_special_character,
+    is_integer,
+)
+from app import log
+
 # Initialize colorized output
 colorama.init(autoreset=True)
+
+RETENTION = 30  # Required storage in days
 
 
 @dataclass
@@ -81,9 +93,10 @@ def get_manufacturer_list(
         set[str]: A set of camera manufacturer names or an empty set
             if the input is invalid.
     """
-    manufacturers: set[str] = set()
     if isinstance(compatible_models, list):
         return {model.manufacturer.lower() for model in compatible_models}
+
+    manufacturers: Set[str] = set()
     return manufacturers
 
 
@@ -123,19 +136,16 @@ def parse_compatibility_list(filename: str) -> List[CompatibleModel]:
             from the CSV data.
     """
     compatible_models = []
-    with open(filename, newline="", encoding="UTF-8") as csvfile:
-        reader = csv.reader(csvfile, delimiter=",")
-        # Skip the first 5 rows
-        for _ in range(5):
-            next(reader)
-        # Read the rest of the rows and create CompatibleModel objects
-        for row in reader:
-            model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
-            compatible_models.append(model)
+    df = pd.read_csv(filename, skiprows=5, header=None, encoding="UTF-8")
+
+    # Read the rest of the rows and create CompatibleModel objects
+    for _, row in df.iterrows():
+        model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
+        compatible_models.append(model)
     return compatible_models
 
 
-def read_customer_list(filename: str) -> List[List[str]]:
+def read_customer_list(filename: str) -> pd.DataFrame:
     """Read a CSV file and transpose its rows into columns.
 
     Args:
@@ -145,195 +155,8 @@ def read_customer_list(filename: str) -> List[List[str]]:
         List[List[str]]: A list of lists, with each inner list
             representing a column from the CSV file.
     """
-    with open(filename, newline="", encoding="UTF-8") as csvfile:
-        reader = csv.reader(csvfile)
-        # Use zip(*reader) to transpose rows into columns
-        columns = list(zip(*reader))
-    return [list(column) for column in columns]
 
-
-def santize_customer_list(
-    customer_list: List[List[str]], dictionary: set[str]
-) -> List[List[str]]:
-    """Santize the supplied list of customers.
-
-    Args:
-        customer_list (List[List[str]]): The list of customers.
-        dictionary (set[str]): The set of customers.
-
-    Returns:
-        List[List[str]]: A list of lists, with each inner list
-    """
-    # Get the set if English words from NLTK
-    english_dictionary = set(word.lower() for word in words.words())
-
-    # Extract Headers and data from the customer_list
-    headers = [row[0] for row in customer_list]
-    data = [row[1:] for row in customer_list]
-
-    def remove_keywords(value: str, keywords: set[str]) -> str:
-        """Remove keywords from the supplied dictionary.
-
-        Args:
-            value (str): The value to remove keywords from.
-            keywords (set[str]): The keywords used to filter the supplied customer list.
-
-        Returns:
-            str: The value with keywords removed.
-        """
-        if not value:
-            return value
-        words = value.strip().split(" ")
-        filtered_words = []
-        for word in words:
-            if word.lower() not in keywords:
-                if (
-                    not is_ip_address(word)
-                    and not is_mac_address(word)
-                    and not is_special_character(word)
-                    and not is_integer(word)
-                ):
-                    filtered_words.append(word)
-        return " ".join(filtered_words)
-
-    def is_ip_address(value: str) -> bool:
-        """Check if the given value is a valid IPv4 address.
-
-        Args:
-            value (str): The value to check.
-
-        Returns:
-            bool: True if the value is a valid IPv4 address, False otherwise.
-        """
-        # Regular expression to match IPv4 addresses
-        ip_pattern = re.compile(
-            r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-            r"(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-        )
-
-        # Match the pattern and ensure it's a valid IP address
-        return bool(ip_pattern.match(value))
-
-    def contains_ip_address(values: List[str]) -> bool:
-        """Check if the column contains IP addresses.
-
-        Args:
-            values (List[str]): The list of values in the column.
-
-        Returns:
-            bool: True if the column contains IP addresses, False otherwise.
-        """
-        return any(is_ip_address(value) for value in values)
-
-    def is_mac_address(value: str) -> bool:
-        """Check if the given value is a valid MAC address.
-
-        Args:
-            value (str): The value to check.
-
-        Returns:
-            bool: True if the value is a valid MAC address, False otherwise.
-        """
-        mac_pattern = re.compile(
-            r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
-        )
-        return bool(mac_pattern.match(value))
-
-    def contains_mac_address(values: List[str]) -> bool:
-        """Check if the column contains MAC addresses.
-
-        Args:
-            values (List[str]): The list of values in the column.
-
-        Returns:
-            bool: True if the column contains IP addresses, False otherwise.
-        """
-        return any(is_mac_address(value) for value in values)
-
-    def remove_ip_mac(
-        headers: List[str], data: List[List[str]]
-    ) -> (List[str], List[List[str]]):
-        """Remove the IP addresses from the supplied headers and data.
-
-        Args:
-            headers (List[str]): The list of headers.
-            data (List[List[List[str]]]): The list of data to be removed.
-
-        Returns:
-            Tuple[List[str], List[List[str]]]: The sanitized headers and data.
-        """
-        columns_to_remove = []
-        for column_index in range(len(headers)):
-            column_values = data[column_index]
-            if contains_ip_address(column_values):
-                columns_to_remove.append(column_index)
-            if contains_mac_address(column_values):
-                columns_to_remove.append(column_index)
-        filtered_headers = [
-            header
-            for index, header in enumerate(headers)
-            if index not in columns_to_remove
-        ]
-        filtered_data = [
-            [
-                value
-                for index, value in enumerate(row)
-                if index not in columns_to_remove
-            ]
-            for row in data
-        ]
-        return filtered_headers, filtered_data
-
-    def is_special_character(value: str) -> bool:
-        """Check if the given value is a single special character or a specific sequence.
-
-        Args:
-            value (str): The value to check.
-
-        Returns:
-            bool: True if the value is a special character or specific sequence, False otherwise.
-        """
-        # Define the regex pattern for special characters and sequences
-        special_char_pattern = re.compile(
-            r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
-        )
-
-        # Match the pattern and return whether it's a valid special character or sequence
-        return bool(special_char_pattern.match(value))
-
-    def is_integer(value: str) -> bool:
-        """Check if the given value is a valid integer using regex.
-
-        Args:
-            value (str): The value to check.
-
-        Returns:
-            bool: True if the value is an integer, False otherwise.
-        """
-        # Define the regex pattern for an integer
-        integer_pattern = re.compile(r"^[-+]?\d+$")
-
-        # Match the pattern and return whether it's a valid integer
-        return bool(integer_pattern.match(value))
-
-    sanitized_data = []
-    for column in data:
-        sanitized_column = []
-        for value in column:
-            sanitized_value = remove_keywords(value, dictionary)
-            sanitized_value = remove_keywords(
-                sanitized_value, english_dictionary
-            )
-            if (
-                not is_ip_address(sanitized_value)
-                and not is_mac_address(sanitized_value)
-                and not is_special_character(sanitized_value)
-                and not is_integer(sanitized_value)
-            ):
-                sanitized_column.append(sanitized_value)
-        sanitized_data.append(sanitized_column)
-    sanitized_headers, sanitized_data = remove_ip_mac(headers, sanitized_data)
-    return [sanitized_headers] + sanitized_data
+    return pd.read_csv(filename, dtype=str, encoding="UTF-8")
 
 
 def tabulate_data(data: List[List[str]]) -> None:
@@ -357,7 +180,46 @@ def tabulate_data(data: List[List[str]]) -> None:
     combined_data = list(zip(*table))
 
     # Print the tabulated data
-    print(tabulate(combined_data, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
+
+
+def sanitize_customer_list(
+    customer_list: List[List[str]], dictionary: set[str]
+) -> List[List[str]]:
+    """Sanitize the supplied list of customers.
+
+    Args:
+        customer_list (List[List[str]]): The list of customers.
+        dictionary (set[str]): The set of customers.
+
+    Returns:
+        List[List[str]]: A list of lists, with each inner list
+    """
+    # Get the set if English words from NLTK
+    english_dictionary = {word.lower() for word in words.words()}
+
+    # Extract Headers and data from the customer_list
+    headers = [row[0] for row in customer_list]
+    data = [row[1:] for row in customer_list]
+
+    sanitized_data = []
+    for column in data:
+        sanitized_column = []
+        for value in column:
+            sanitized_value = remove_keywords(value, dictionary)
+            sanitized_value = remove_keywords(
+                sanitized_value, english_dictionary
+            )
+            if (
+                not is_ip_address(sanitized_value)
+                and not is_mac_address(sanitized_value)
+                and not is_special_character(sanitized_value)
+                and not is_integer(sanitized_value)
+            ):
+                sanitized_column.append(sanitized_value)
+        sanitized_data.append(sanitized_column)
+    sanitized_headers, sanitized_data = remove_ip_mac(headers, sanitized_data)
+    return [sanitized_headers] + sanitized_data
 
 
 def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
@@ -371,19 +233,17 @@ def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
     Returns:
         str: The manufacturer name removed.
     """
-    if " " in model_name:
-        substrings = model_name.split(" ")
-        filtered_substrings = [
-            sub for sub in substrings if sub.lower() not in manufacturers
-        ]
-        remaining_string = " ".join(filtered_substrings)
-        return remaining_string
-    else:
+    if " " not in model_name:
         return model_name
+    substrings = model_name.split(" ")
+    filtered_substrings = [
+        sub for sub in substrings if sub.lower() not in manufacturers
+    ]
+    return " ".join(filtered_substrings)
 
 
 def identify_model_column(
-    customer_cameras_raw: List[List[str]],
+    customer_cameras_raw: pd.DataFrame,
     verkada_cameras_list: List[str],
     manufacturer_list: set[str],
 ) -> Optional[int]:
@@ -400,56 +260,124 @@ def identify_model_column(
         Optional[int]: The index of the column with the highest match
             score, or None if no valid scores are found.
     """
-    scores = []
-    for column_data in customer_cameras_raw:
+
+    def calculate_column_score(column_data):
         column_values = set()
         column_score = 0
 
-        for camera in column_data:
-            model_name = manufacturer_removed(
-                camera.strip(), manufacturer_list
-            )
-            if model_name and model_name not in column_values:
-                score = process.extractOne(
-                    model_name,
-                    verkada_cameras_list,
-                    scorer=fuzz.token_sort_ratio,
-                )[1]
-                column_score += score
-                column_values.add(model_name)
+        for camera in column_data.dropna():  # Remove NaN values
+            if isinstance(camera, str):  # Only process strings
+                camera = manufacturer_removed(
+                    camera.strip(), manufacturer_list
+                )
+                if (
+                    camera and camera not in column_values
+                ):  # Skip empty strings
+                    # Perform fuzzy matching and accumulate the score
+                    score = process.extractOne(
+                        camera,
+                        verkada_cameras_list,
+                        scorer=fuzz.token_sort_ratio,
+                    )[1]
+                    column_score += score
 
-        scores.append(column_score)
+        return column_score
 
-    if scores:
-        print(scores)
-        return scores.index(max(scores))
-    print(
-        f"{Fore.RED}No valid scores found."
-        f"{Style.RESET_ALL} Check your input data."
+    # Apply the score calculation to each column in the DataFrame
+    scores = customer_cameras_raw.apply(calculate_column_score)
+
+    # Get the index of the column with the highest score
+    if not scores.empty and scores.max() > 0:
+        return scores.idxmax()
+
+    log.warning(
+        "%sNo valid scores found.%s Check your input data.",
+        Fore.RED,
+        Style.RESET_ALL,
     )
     return None
 
 
+def find_count_column(df: pd.DataFrame) -> Optional[int]:
+    """Find the column index for count data using regex
+
+    Args:
+        df (Pandas.DataFrame): The DataFrame to search.
+
+    Returns:
+        Optional[int]: The index of the count column, or None if not
+            present.
+    """
+    # Case-insensitive pattern to search
+    count_column_pattern = re.compile(r"(?i)\bcount\b|#|\bquantity\b")
+
+    return next(
+        (
+            i
+            for i, col in enumerate(df.columns)
+            if isinstance(col, str) and count_column_pattern.match(col)
+        ),
+        None,
+    )
+
+
 def get_camera_count(
-    column_number: int, customer_cameras_raw: List[List[str]]
+    column_number: int, customer_cameras_raw: pd.DataFrame
 ) -> Dict[str, int]:
     """Count the occurrences of camera names in a specified column.
 
     Args:
         column_number (int): The index of the column to analyze.
-        customer_cameras_raw (List[List[str]]): Raw customer camera data
+        customer_cameras_raw (Pandas.DataFrame): Raw customer camera data
             transposed into columns.
 
     Returns:
         Dict[str, int]: A dictionary containing camera names as keys and
             their occurrence counts as values.
     """
+    # Check if count column exists
+    count_column_index = find_count_column(customer_cameras_raw)
     camera_statistics: Dict[str, int] = {}
+    if count_column_index is not None:
+        count_data = customer_cameras_raw.iloc[:, count_column_index]
+        camera_statistics = dict(
+            zip(customer_cameras_raw.iloc[:, 0], count_data)
+        )
+        # Ensure the counts are integers and handle missing value cases
+        return {
+            str(name).strip(): 0 if pd.isna(i) or i == "nan" else int(i)
+            for name, i in camera_statistics.items()
+            if name
+        }
+
+    # Default to counting cameras by name
+    customer_cameras_raw.T.values.tolist()
     for value in customer_cameras_raw[column_number]:
-        value = value.strip()
+        value = str(value).strip()
         if value and "model" not in value.lower():
             camera_statistics[value] = camera_statistics.get(value, 0) + 1
     return camera_statistics
+
+
+def strip_ansi_codes(text: str) -> str:
+    """
+    Removes ANSI escape codes from a given text string. This function is
+    useful for cleaning up text that may contain formatting codes,
+    ensuring that the output is plain and readable.
+
+    The function uses a regular expression to identify and strip out ANSI
+    codes, which are often used for terminal text formatting. The result
+    is a clean string without any formatting artifacts.
+
+    Args:
+        text (str): The input string potentially containing ANSI escape
+            codes.
+
+    Returns:
+        str: The cleaned string with ANSI codes removed.
+    """
+
+    return re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]").sub("", text)
 
 
 def camera_match(
@@ -567,7 +495,7 @@ def print_list_data(
         )
 
     # Create table headers
-    headers = [
+    color_headers = [
         f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
@@ -577,17 +505,69 @@ def print_list_data(
         f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
     ]
 
+    plain_headers = [
+        "Camera Name",
+        "Count",
+        "Match Type",
+        "Manufacturer",
+        "Model",
+        "Min Firmware Version",
+        "Notes",
+    ]
+
     # Sort alphabetically
     output.sort(key=lambda x: x[2], reverse=True)
 
     # Print table in pretty format
-    print(tabulate(output, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
 
-    # Optionally, save to file (uncomment and adjust if needed)
-    # with open("camera_matches.csv", "w", newline="", encoding="UTF-8") as f:
-    #     writer = csv.writer(f)
-    #     writer.writerow(headers)
-    #     writer.writerows(output)
+    # Convert to Pandas DataFrame
+    df = pd.DataFrame(
+        output,
+        columns=plain_headers,
+    )
+    # Strip color codes
+    df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
+
+    # NOTE: Uncomment to write truncated to terminal
+    # print(df.head())
+    # NOTE: Uncomment to write to html file
+    # df.to_html("camera_models.html", index=False)
+    # NOTE: Uncomment to write output to a csv
+    # with open("camera_models.txt", "w", encoding="UTF-8") as f:
+    #     f.write(
+    #         tabulate(
+    #             df.values.tolist(), headers=plain_headers, tablefmt="simple"
+    #         )
+    #     )
+
+
+def recommend_connectors(customer_cameras: Dict[str, int]):
+    """
+    Generate connector recommendations based on customer camera data and
+    model specifications. This function processes camera counts and
+    calculates the required storage for both low and high megapixel
+    channels.
+
+    Args:
+        customer_cameras (Dict[str, int]): A list of customer cameras and
+            the count of each model.
+
+    Returns:
+        None: This function does not return a value but triggers the
+            recommendation process for connectors.
+
+    Examples:
+        >>> recommend_connectors('model_column_name', raw_camera_data)
+    """
+    low_mp_count = calc.count_low_mp_channels(customer_cameras)
+    low_storage = calc.calculate_low_mp_storage(low_mp_count, RETENTION)
+
+    high_mp_count = calc.count_high_mp_channels(customer_cameras)
+    high_storage = calc.calculate_4k_storage(high_mp_count, RETENTION)
+
+    total_storage = low_storage + high_storage
+    calc.recommend_connector(low_mp_count, high_mp_count, total_storage)
 
 
 def main():
@@ -609,7 +589,7 @@ def main():
     Returns:
         None
     """
-    nltk.download("words")
+
     verkada_cameras = parse_compatibility_list(
         "Verkada Command Connector Compatibility.csv"
     )
@@ -617,20 +597,22 @@ def main():
     manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "Camera Compatibility Sheets/Private/private 1.csv"
+        "./Camera Compatibility Sheets/customer_sheet_4.csv"
     )
-    customer_cameras_raw = santize_customer_list(
-        customer_cameras_raw, manufacturers
-    )
-    # tabulate_data(customer_cameras_raw)
+
+    # NOTE: Uncomment to print raw csv
+    # tabulate_data(
+    #     [customer_cameras_raw.columns.tolist()]
+    #     + customer_cameras_raw.T.values.tolist()
+    # )
 
     model_column = identify_model_column(
         customer_cameras_raw, verkada_cameras_list, manufacturers
     )
-    print(model_column)
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
+        recommend_connectors(customer_cameras)
         traced_cameras = camera_match(
             customer_cameras_list,
             verkada_cameras_list,
@@ -639,7 +621,9 @@ def main():
         )
         print_list_data(customer_cameras, traced_cameras)
     else:
-        print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
+        log.critical(
+            "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
+        )
 
 
 # Execute if being ran directly

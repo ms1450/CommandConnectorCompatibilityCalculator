@@ -1,3 +1,5 @@
+"""Typing for thefuzz module"""
+
 # thefuzz.pyi
 
 from typing import Any, Callable, List, Tuple, Union
@@ -29,7 +31,7 @@ class process:
         scorer: Callable[[str, str], int] = ...,
         processor: Callable[[str], str] = ...,
         limit: int = ...,
-    ) -> List[Tuple[str, int, int]]: ...
+    ) -> List[Tuple[str, int]]: ...
     @staticmethod
     def extractOne(
         query: str,
