@@ -44,6 +44,16 @@ def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     return {""}
 
 
+def find_verkada_camera(
+    verkada_model: str, verkada_camera_list: List[CompatibleModel]
+) -> CompatibleModel | None:
+    """Finds the Verkada camera model in the list."""
+    for camera in verkada_camera_list:
+        if camera.model_name.lower() == verkada_model.lower():
+            return camera
+    return None  # Return None if the camera model is not found
+
+
 def get_verkada_camera_details(
     camera_name: Series, verkada_list: List[CompatibleModel]
 ) -> List[str]:

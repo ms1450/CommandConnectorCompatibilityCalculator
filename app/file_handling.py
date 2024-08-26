@@ -40,6 +40,8 @@ def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
             manufacturer=str(row[0]),
             minimum_supported_firmware_version=str(row[2]),
             notes=str(row[3]),
+            mp=0,
+            channels=0,
         )
         compatible_models.append(model)
     return compatible_models

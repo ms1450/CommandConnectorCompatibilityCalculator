@@ -25,4 +25,5 @@ class CompatibleModel:
     manufacturer: str
     minimum_supported_firmware_version: str
     notes: str
+    mp: int = 0
     channels: int = 0
