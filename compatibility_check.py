@@ -8,16 +8,30 @@ Purpose: Import a list of third-party cameras and return to the terminal
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Set, List, Optional, Tuple, Union
 
 import colorama
 import pandas as pd
 from colorama import Fore, Style
+from nltk.corpus import words
 from tabulate import tabulate
 from thefuzz import fuzz, process
 
+import app.calculations as calc
+from app.sanitize import (
+    remove_keywords,
+    is_ip_address,
+    is_mac_address,
+    remove_ip_mac,
+    is_special_character,
+    is_integer,
+)
+from app import log
+
 # Initialize colorized output
 colorama.init(autoreset=True)
+
+RETENTION = 30  # Required storage in days
 
 
 @dataclass
@@ -64,6 +78,26 @@ def get_camera_list(
         return list(compatible_models.keys())
 
     return []
+
+
+def get_manufacturer_list(
+    compatible_models: Union[List[CompatibleModel]],
+) -> set[str]:
+    """Retrieve a set of camera manufacturer names from compatible models.
+
+    Args:
+        compatible_models
+        (Union[List[CompatibleModel]]): A list of model objects.
+
+    Returns:
+        set[str]: A set of camera manufacturer names or an empty set
+            if the input is invalid.
+    """
+    if isinstance(compatible_models, list):
+        return {model.manufacturer.lower() for model in compatible_models}
+
+    manufacturers: Set[str] = set()
+    return manufacturers
 
 
 def find_matching_camera(
@@ -154,11 +188,72 @@ def tabulate_data(data: List[List[str]]) -> None:
     combined_data = list(zip(*table))
 
     # Print the tabulated data
-    print(tabulate(combined_data, headers=headers, tablefmt="fancy_grid"))
+    print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
+
+
+def sanitize_customer_list(
+    customer_list: List[List[str]], dictionary: set[str]
+) -> List[List[str]]:
+    """Sanitize the supplied list of customers.
+
+    Args:
+        customer_list (List[List[str]]): The list of customers.
+        dictionary (set[str]): The set of customers.
+
+    Returns:
+        List[List[str]]: A list of lists, with each inner list
+    """
+    # Get the set if English words from NLTK
+    english_dictionary = {word.lower() for word in words.words()}
+
+    # Extract Headers and data from the customer_list
+    headers = [row[0] for row in customer_list]
+    data = [row[1:] for row in customer_list]
+
+    sanitized_data = []
+    for column in data:
+        sanitized_column = []
+        for value in column:
+            sanitized_value = remove_keywords(value, dictionary)
+            sanitized_value = remove_keywords(
+                sanitized_value, english_dictionary
+            )
+            if (
+                not is_ip_address(sanitized_value)
+                and not is_mac_address(sanitized_value)
+                and not is_special_character(sanitized_value)
+                and not is_integer(sanitized_value)
+            ):
+                sanitized_column.append(sanitized_value)
+        sanitized_data.append(sanitized_column)
+    sanitized_headers, sanitized_data = remove_ip_mac(headers, sanitized_data)
+    return [sanitized_headers] + sanitized_data
+
+
+def manufacturer_removed(model_name: str, manufacturers: set[str]) -> str:
+    """Checks if manufacturer name is in the model name, if it is, then
+    the manufacturer name gets removed.
+
+    Args:
+        model_name (str): The name of the model.
+        manufacturers (set[str]): A set of manufacturer names.
+
+    Returns:
+        str: The manufacturer name removed.
+    """
+    if " " not in model_name:
+        return model_name
+    substrings = model_name.split(" ")
+    filtered_substrings = [
+        sub for sub in substrings if sub.lower() not in manufacturers
+    ]
+    return " ".join(filtered_substrings)
 
 
 def identify_model_column(
-    customer_cameras_raw: pd.DataFrame, verkada_cameras_list: List[str]
+    customer_cameras_raw: pd.DataFrame,
+    verkada_cameras_list: List[str],
+    manufacturer_list: set[str],
 ) -> Optional[int]:
     """Identify the column index that best matches camera models.
 
@@ -167,6 +262,7 @@ def identify_model_column(
             transposed into columns.
         verkada_cameras_list (List[str]): List of known Verkada camera
             model names.
+        manufacturer_list (set[str]): Set of manufacturer model names.
 
     Returns:
         Optional[int]: The index of the column with the highest match
@@ -174,12 +270,17 @@ def identify_model_column(
     """
 
     def calculate_column_score(column_data):
+        column_values = set()
         column_score = 0
 
         for camera in column_data.dropna():  # Remove NaN values
             if isinstance(camera, str):  # Only process strings
-                camera = camera.strip()
-                if camera:  # Skip empty strings
+                camera = manufacturer_removed(
+                    camera.strip(), manufacturer_list
+                )
+                if (
+                    camera and camera not in column_values
+                ):  # Skip empty strings
                     # Perform fuzzy matching and accumulate the score
                     score = process.extractOne(
                         camera,
@@ -197,8 +298,10 @@ def identify_model_column(
     if not scores.empty and scores.max() > 0:
         return scores.idxmax()
 
-    print(
-        f"{Fore.RED}No valid scores found.{Style.RESET_ALL} Check your input data."
+    log.warning(
+        "%sNo valid scores found.%s Check your input data.",
+        Fore.RED,
+        Style.RESET_ALL,
     )
     return None
 
@@ -214,7 +317,7 @@ def find_count_column(df: pd.DataFrame) -> Optional[int]:
             present.
     """
     # Case-insensitive pattern to search
-    count_column_pattern = re.compile(r"(?i)count.*|#")
+    count_column_pattern = re.compile(r"(?i)\bcount\b|#|\bquantity\b")
 
     return next(
         (
@@ -258,7 +361,7 @@ def get_camera_count(
     # Default to counting cameras by name
     customer_cameras_raw.T.values.tolist()
     for value in customer_cameras_raw[column_number]:
-        value = value.strip()
+        value = str(value).strip()
         if value and "model" not in value.lower():
             camera_statistics[value] = camera_statistics.get(value, 0) + 1
     return camera_statistics
@@ -289,6 +392,7 @@ def camera_match(
     list_customer_cameras: List[str],
     verkada_cameras_list: List[str],
     verkada_cameras: List[CompatibleModel],
+    manufacturer_list: set[str],
 ) -> List[Tuple[str, str, Optional[CompatibleModel]]]:
     """Match customer cameras against a list of known Verkada cameras.
 
@@ -299,6 +403,7 @@ def camera_match(
             names.
         verkada_cameras (List[CompatibleModel]): A list of CompatibleModel
             objects.
+        manufacturer_list (set[str]): A set of manufacturer model
 
     Returns:
         List[Tuple[str, str, Optional[CompatibleModel]]]: A list of tuples
@@ -313,14 +418,17 @@ def camera_match(
 
     for camera in list_customer_cameras:
         if camera:
+            camera_model = manufacturer_removed(camera, manufacturer_list)
             match, score = process.extractOne(
-                camera, verkada_cameras_list, scorer=fuzz.ratio
+                camera_model, verkada_cameras_list, scorer=fuzz.ratio
             )
             _, sort_score = process.extractOne(
-                camera, verkada_cameras_list, scorer=fuzz.token_sort_ratio
+                camera_model,
+                verkada_cameras_list,
+                scorer=fuzz.token_sort_ratio,
             )
             _, set_score = process.extractOne(
-                camera, verkada_cameras_list, scorer=fuzz.token_set_ratio
+                camera_model, verkada_cameras_list, scorer=fuzz.token_set_ratio
             )
 
             if score == 100 or sort_score == 100:
@@ -414,6 +522,7 @@ def print_list_data(
         "Min Firmware Version",
         "Notes",
     ]
+
     # Sort alphabetically
     output.sort(key=lambda x: x[2], reverse=True)
 
@@ -430,10 +539,8 @@ def print_list_data(
 
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
-
     # NOTE: Uncomment to write to html file
     # df.to_html("camera_models.html", index=False)
-
     # NOTE: Uncomment to write output to a csv
     # with open("camera_models.txt", "w", encoding="UTF-8") as f:
     #     f.write(
@@ -441,6 +548,34 @@ def print_list_data(
     #             df.values.tolist(), headers=plain_headers, tablefmt="simple"
     #         )
     #     )
+
+
+def recommend_connectors(customer_cameras: Dict[str, int]):
+    """
+    Generate connector recommendations based on customer camera data and
+    model specifications. This function processes camera counts and
+    calculates the required storage for both low and high megapixel
+    channels.
+
+    Args:
+        customer_cameras (Dict[str, int]): A list of customer cameras and
+            the count of each model.
+
+    Returns:
+        None: This function does not return a value but triggers the
+            recommendation process for connectors.
+
+    Examples:
+        >>> recommend_connectors('model_column_name', raw_camera_data)
+    """
+    low_mp_count = calc.count_low_mp_channels(customer_cameras)
+    low_storage = calc.calculate_low_mp_storage(low_mp_count, RETENTION)
+
+    high_mp_count = calc.count_high_mp_channels(customer_cameras)
+    high_storage = calc.calculate_4k_storage(high_mp_count, RETENTION)
+
+    total_storage = low_storage + high_storage
+    calc.recommend_connector(low_mp_count, high_mp_count, total_storage)
 
 
 def main():
@@ -467,26 +602,36 @@ def main():
         "Verkada Command Connector Compatibility.csv"
     )
     verkada_cameras_list = get_camera_list(verkada_cameras)
+    manufacturers = get_manufacturer_list(verkada_cameras)
 
     customer_cameras_raw = read_customer_list(
-        "./Camera Compatibility Sheets/Axis_edited.csv"
+        "./Camera Compatibility Sheets/Camera Compatibility Sheet 5.csv"
     )
 
     # NOTE: Uncomment to print raw csv
-    # tabulate_data(customer_cameras_raw)
+    # tabulate_data(
+    #     [customer_cameras_raw.columns.tolist()]
+    #     + customer_cameras_raw.T.values.tolist()
+    # )
 
     model_column = identify_model_column(
-        customer_cameras_raw, verkada_cameras_list
+        customer_cameras_raw, verkada_cameras_list, manufacturers
     )
     if model_column is not None:
         customer_cameras = get_camera_count(model_column, customer_cameras_raw)
         customer_cameras_list = get_camera_list(customer_cameras)
+        recommend_connectors(customer_cameras)
         traced_cameras = camera_match(
-            customer_cameras_list, verkada_cameras_list, verkada_cameras
+            customer_cameras_list,
+            verkada_cameras_list,
+            verkada_cameras,
+            manufacturers,
         )
         print_list_data(customer_cameras, traced_cameras)
     else:
-        print(f"{Fore.RED}Could not identify model column.{Style.RESET_ALL}")
+        log.critical(
+            "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
+        )
 
 
 # Execute if being ran directly
