@@ -6,15 +6,21 @@ Purpose: The contents of this file are to perform various calculations
     a deal.
 """
 
+# Standard library imports
+import re
 from typing import Dict, List, Optional, TypedDict
 
-from formatting import get_camera_set
-import pandas as pd
-import re
-from pandas import Series
+# Third-party library imports
 import numpy as np
+import pandas as pd
+from pandas import Series
 from thefuzz import fuzz, process
+
+# Local/application-specific imports
 from app import log, CompatibleModel
+from app.formatting import get_camera_set
+
+RETENTION = 30  # Required storage in days
 
 
 class Connector(TypedDict):
@@ -92,18 +98,18 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 
 def identify_model_column(
-    customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
+        customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> Optional[Series]:
-    verkada_camera_list = get_camera_set(verkada_cameras)
     """Identify the column with the camera models in the customer list
-    
+
     Args:
         customer_list (pd.DataFrame): The customer list to identify.
         verkada_cameras (List[CompatibleModel]): The list of verkada cameras.
-    
+
     Returns:
-        Optional[Series]: Column headers for the camera model column        
+        Optional[Series]: Column headers for the camera model column
     """
+    verkada_camera_list = get_camera_set(verkada_cameras)
 
     def calculate_score(column_data: pd.DataFrame) -> float:
         """Calculate the score of the column.
@@ -127,7 +133,8 @@ def identify_model_column(
         # If all values are successfully converted to numeric, return 0
         if numeric_column.notna().all():
             log.info(
-                f"Detected Numeric Column '{column_data.name}', Forcing Score: 0"
+                "Detected Numeric Column '%s', Forcing Score: 0",
+                column_data.name
             )
             return 0
 
@@ -154,7 +161,7 @@ def identify_model_column(
 
     # Apply the score calculation to each column in the DataFrame
     scores = customer_list.apply(calculate_score)
-    log.info("Scores: \n" + scores.to_string())
+    log.info("Scores: \n '%s'", scores.to_string())
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
         return scores.idxmax()
@@ -194,7 +201,7 @@ def get_camera_count(
         results (pd.DataFrame): The results of the calculation of camera models.
 
     Returns:
-        Dict[str, int]: A dictionary containing camera names as keys and their occurrence counts as values.
+        Dict[str, int]: A dictionary containing camera names and counts.
     """
     count_column_name = identify_count_column(customer_list)
 
@@ -243,43 +250,42 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": f"exact",
+                    "match_type": "exact",
                     "verkada_model": match,
                 }
             )
-        elif set_score == 100:
+        if set_score == 100:
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": f"identified",
+                    "match_type": "identified",
                     "verkada_model": match,
                 }
             )
-        elif score >= 80:
+        if score >= 80:
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": f"potential",
+                    "match_type": "potential",
                     "verkada_model": match,
                 }
             )
-        else:
-            return pd.Series(
-                {
-                    "name": camera,
-                    "match_type": f"unsupported",
-                    "verkada_model": None,
-                }
-            )
+        return pd.Series(
+            {
+                "name": camera,
+                "match_type": "unsupported",
+                "verkada_model": None,
+            }
+        )
 
     camera_column = identify_model_column(customer_list, verkada_cameras)
-    log.info("Highest Scoring Camera Column: " + camera_column)
+    log.info("Highest Scoring Camera Column: '%s'", camera_column)
     model_data = customer_list[camera_column]
     verkada_cameras_list = get_camera_set(verkada_cameras)
     result = model_data.apply(match_camera)
 
     result = get_camera_count(customer_list, result)
-    log.info("First 10 Matched Results: \n" + result.head(10).to_string())
+    log.info("First 10 Matched Results: \n '%s'", result.head(10).to_string())
     return result
 
 

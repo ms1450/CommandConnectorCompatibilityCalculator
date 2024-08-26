@@ -1,10 +1,16 @@
+"""
+Author: Mehul Sen
+Co-Author: Ian Young
+Purpose: The contents of this file are to perform output.
+"""
+
+from typing import List
 import colorama
 from colorama import Fore, Style
 from tabulate import tabulate
 import pandas as pd
-from app import CompatibleModel
-from typing import List
 
+from app import CompatibleModel
 from app.formatting import get_verkada_camera_details
 
 
@@ -12,17 +18,15 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     """Print and save a formatted list of camera data."""
 
     def colorize_type(value):
-        match value:
-            case "unsupported":
-                return f"{Fore.RED}unsupported{Style.RESET_ALL}"
-            case "potential":
-                return f"{Fore.YELLOW}potential{Style.RESET_ALL}"
-            case "identified":
-                return f"{Fore.CYAN}identified{Style.RESET_ALL}"
-            case "exact":
-                return f"{Fore.GREEN}exact{Style.RESET_ALL}"
-            case _:
-                return f"{Fore.LIGHTBLACK_EX}" + value + f"{Style.RESET_ALL}"
+        if value == "unsupported":
+            return f"{Fore.RED}unsupported{Style.RESET_ALL}"
+        if value == "potential":
+            return f"{Fore.YELLOW}potential{Style.RESET_ALL}"
+        if value == "identified":
+            return f"{Fore.CYAN}identified{Style.RESET_ALL}"
+        if value == "exact":
+            return f"{Fore.GREEN}exact{Style.RESET_ALL}"
+        return f"{Fore.LIGHTBLACK_EX}{value}{Style.RESET_ALL}"
 
     # Initialize Colorama
     colorama.init(autoreset=True)
@@ -62,21 +66,21 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     output.sort(key=lambda x: x[2], reverse=True)
     print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
 
-    plain_headers = [
-        "Camera Name",
-        "Count",
-        "Match Type",
-        "Manufacturer",
-        "Model",
-        "Min Firmware Version",
-        "Notes",
-    ]
+    # plain_headers = [
+    #     "Camera Name",
+    #     "Count",
+    #     "Match Type",
+    #     "Manufacturer",
+    #     "Model",
+    #     "Min Firmware Version",
+    #     "Notes",
+    # ]
 
     # Convert to Pandas DataFrame
-    df = pd.DataFrame(
-        output,
-        columns=plain_headers,
-    )
+    # df = pd.DataFrame(
+    #     output,
+    #     columns=plain_headers,
+    # )
 
     # Strip color codes
 

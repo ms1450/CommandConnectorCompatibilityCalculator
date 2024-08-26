@@ -3,15 +3,15 @@ Author: Mehul Sen
 Purpose: The contents of this file are to perform formatting for the customer camera file.
 """
 
+import os
+import re
+from typing import List, Set
+import pandas as pd
+import nltk
 from pandas import Series
+from nltk.corpus import words
 
 from app import CompatibleModel
-from typing import List, Optional, Set
-import nltk
-import pandas as pd
-import re
-from nltk.corpus import words
-import os
 
 NLTK_DATA_PATH = "../misc/nltk_data"
 
@@ -27,6 +27,7 @@ def get_camera_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     """
     if isinstance(verkada_list, list):
         return {model.model_name for model in verkada_list}
+    return {""}
 
 
 def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
@@ -40,6 +41,7 @@ def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     """
     if isinstance(verkada_list, list):
         return {model.manufacturer.lower() for model in verkada_list}
+    return {""}
 
 
 def get_verkada_camera_details(
@@ -52,7 +54,7 @@ def get_verkada_camera_details(
         verkada_list (List[CompatibleModel]): List of compatible models.
 
     Returns:
-        Optional[CompatibleModel]: Matching camera model.
+        List[str]: Matching camera model.
     """
     for model in verkada_list:
         if model.model_name == camera_name:
@@ -63,21 +65,19 @@ def get_verkada_camera_details(
                     model.minimum_supported_firmware_version,
                     "",
                 ]
-            else:
-                return [
-                    model.model_name,
-                    model.manufacturer,
-                    model.minimum_supported_firmware_version,
-                    model.notes,
-                ]
+            return [
+                model.model_name,
+                model.manufacturer,
+                model.minimum_supported_firmware_version,
+                model.notes,
+            ]
     return ["", "", "", ""]
 
 
 def sanitize_customer_data(
     customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:
-    """Sanitize the Customer List Data by removing whitespaces, IPs, MACs, Special Characters, and any columns with
-    headers mentioning Serial Numbers
+    """Sanitize Customer List: remove whitespace, IPs, MACs, special chars, and serial number columns
 
     Args:
         customer_list (pd.DataFrame): Customer List.
@@ -111,14 +111,14 @@ def sanitize_customer_data(
         if not value:
             return value
 
-        words = value.split()
+        word_set = value.split()
 
         # Check if there's more than one word
-        multiple_words = len(words) > 1
+        multiple_words = len(word_set) > 1
 
         filtered_words = [
             word
-            for word in words
+            for word in word_set
             if word.lower() not in all_keywords
             and not re.match(ip_pattern, word)
             and not re.match(mac_pattern, word)

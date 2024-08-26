@@ -1,8 +1,13 @@
-from app import log, CompatibleModel
+"""
+Author: Mehul Sen
+Co-Author: Ian Young
+Purpose: The contents of this file are to perform file handling.
+"""
 
+
+from typing import List
 import pandas as pd
-
-from typing import List, Optional
+from app import CompatibleModel
 
 
 def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
