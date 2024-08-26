@@ -11,17 +11,20 @@ import re
 from typing import Dict, List, Optional, TypedDict
 
 # Third-party library imports
+import colorama
 import numpy as np
 import pandas as pd
-from pandas import Series
+from colorama import Fore, Style
 from thefuzz import fuzz, process
 
 # Local/application-specific imports
 from app import log, CompatibleModel
 from app.formatting import get_camera_set, find_verkada_camera
 
-# Required storage in days
-RETENTION = 30
+RETENTION = 30  # Required storage in days
+
+# Initialize colorama
+colorama.init(autoreset=True)
 
 
 class Connector(TypedDict):
@@ -98,9 +101,9 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 )
 
 
-def identify_model_column_name(
+def identify_model_column(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
-) -> Optional[Series]:
+) -> Optional[int]:
     """Identify the column with the camera models in the customer list
 
     Args:
@@ -164,7 +167,7 @@ def identify_model_column_name(
 
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
-        return scores.idxmax()
+        return int(scores.idxmax())
     log.warning("%sNo valid scores found.%s Check your input data.")
     return None
 
@@ -226,7 +229,9 @@ def get_camera_match(
         verkada_cameras (List[CompatibleModel]): The list of known cameras.
 
     Returns:
-        pd.DataFrame: The matched cameras with count.
+        pd.DataFrame: A Pandas DataFrame where each entry will contain the
+            Information about the camera such as camera name, match type
+            and model.
     """
 
     def match_camera(camera):
@@ -248,7 +253,7 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": "exact",
+                    "match_type": f"{Fore.GREEN}exact{Style.RESET_ALL}",
                     "verkada_model": match,
                 }
             )
@@ -256,7 +261,7 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": "identified",
+                    "match_type": f"{Fore.CYAN}identified{Style.RESET_ALL}",
                     "verkada_model": match,
                 }
             )
@@ -264,19 +269,19 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": "potential",
+                    "match_type": f"{Fore.YELLOW}potential{Style.RESET_ALL}",
                     "verkada_model": match,
                 }
             )
         return pd.Series(
             {
                 "name": camera,
-                "match_type": "unsupported",
+                "match_type": f"{Fore.RED}unsupported{Style.RESET_ALL}",
                 "verkada_model": None,
             }
         )
 
-    camera_column = identify_model_column_name(customer_list, verkada_cameras)
+    camera_column = identify_model_column(customer_list, verkada_cameras)
     log.info("Highest Scoring Camera Column: '%s'", camera_column)
     model_data = customer_list[camera_column]
     verkada_cameras_list = get_camera_set(verkada_cameras)
@@ -313,7 +318,7 @@ def compile_camera_mp_channels(
         11        Avigilon   1.0-H3-DC1  1.0       1.0
     """
 
-    camera_map = pd.read_csv("../Camera Specs.csv")
+    camera_map = pd.read_csv("./Camera Specs.csv")
     # Iterate through each row in the DataFrame
     for _, row in camera_map.iterrows():
         model_name = row["Model Name"]

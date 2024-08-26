@@ -10,39 +10,26 @@ from app import CompatibleModel
 
 
 def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
-    """Parses the hardware compatibility list from a file.
+    """Parse a CSV file to create a list of compatible models.
+
+    This function reads a specified CSV file, skipping the first five
+    rows, and constructs a list of CompatibleModel objects from the
+    remaining rows. It returns the list of compatible models for further
+    processing.
 
     Args:
-        filename (str): The name of the file containing the hardware compatibility list.
+        filename (str): The path to the CSV file containing compatibility
+            data.
 
     Returns:
-        List[CompatibleModel]: A list of compatible models.
+        list: A list of CompatibleModel objects created from the CSV data.
     """
-
     compatible_models = []
-    # Read the CSV file, skipping the first 5 rows and using no header
     df = pd.read_csv(filename, skiprows=5, header=None, encoding="UTF-8")
 
-    # Ensure that the DataFrame has at least 4 columns
-    if df.shape[1] < 4:
-        raise ValueError(
-            "CSV file does not have the expected number of columns."
-        )
-
-    # Iterate over each row in the DataFrame
+    # Read the rest of the rows and create CompatibleModel objects
     for _, row in df.iterrows():
-        if len(row) < 4:
-            continue  # Skip rows that do not have enough columns
-
-        # Create a CompatibleModel instance from the row data
-        model = CompatibleModel(
-            model_name=row[1].lower(),
-            manufacturer=str(row[0]),
-            minimum_supported_firmware_version=str(row[2]),
-            notes=str(row[3]),
-            mp=0,
-            channels=0,
-        )
+        model = CompatibleModel(row[1].lower(), row[0], row[2], row[3])
         compatible_models.append(model)
     return compatible_models
 
