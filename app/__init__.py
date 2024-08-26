@@ -1,7 +1,9 @@
 """Streamline imports"""
+
 from dataclasses import dataclass
 
 from .log import *
+
 
 @dataclass
 class CompatibleModel:

@@ -98,7 +98,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 
 def identify_model_column(
-        customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
+    customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> Optional[Series]:
     """Identify the column with the camera models in the customer list
 
@@ -134,7 +134,7 @@ def identify_model_column(
         if numeric_column.notna().all():
             log.info(
                 "Detected Numeric Column '%s', Forcing Score: 0",
-                column_data.name
+                column_data.name,
             )
             return 0
 
