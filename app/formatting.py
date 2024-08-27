@@ -129,10 +129,13 @@ def sanitize_customer_data(
         pd.DataFrame: Sanitized Customer List.
     """
 
-    if not os.path.isdir(NLTK_DATA_PATH):
-        download("words", download_dir=NLTK_DATA_PATH)
-    else:
-        find("corpora/words")
+    try:
+        if not os.path.isdir(NLTK_DATA_PATH):
+            download("words", download_dir=NLTK_DATA_PATH)
+        else:
+            find("corpora/words")
+    except LookupError:
+        download("words")
 
     # Handle missing values (replace with empty strings)
     customer_list = customer_list.fillna("")
