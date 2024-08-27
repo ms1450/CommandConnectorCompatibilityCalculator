@@ -86,9 +86,11 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
 
     # NOTE: Uncomment to write truncated to terminal
-    print(df.head())
+    # print(df.head())
+
     # NOTE: Uncomment to write to html file
     # df.to_html("camera_models.html", index=False)
+
     # NOTE: Uncomment to write output to a csv
     # with open("camera_models.txt", "w", encoding="UTF-8") as f:
     #     f.write(
