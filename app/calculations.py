@@ -8,18 +8,21 @@ Purpose: The contents of this file are to perform various calculations
 
 # Standard library imports
 import re
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict, Union
 
 # Third-party library imports
 import colorama
 import numpy as np
 import pandas as pd
-from pandas import Series
 from thefuzz import fuzz, process
 
 # Local/application-specific imports
 from app import log, CompatibleModel
-from app.formatting import get_camera_set, find_verkada_camera
+from app.formatting import (
+    get_camera_set,
+    find_verkada_camera,
+    print_connector_recommendation,
+)
 
 RETENTION = 30  # Required storage in days
 
@@ -103,7 +106,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 def identify_model_column_name(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
-) -> Optional[Series]:
+) -> Optional[Union[int, str]]:
     """Identify the column with the camera models in the customer list
 
     Args:
@@ -600,7 +603,10 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
     log.info("Total storage needed: %0.2f", storage)
     total_required_channels = low_channels + high_channels * 2
     log.info("Total channels needed: %i", total_required_channels)
-    print(", ".join(get_connectors(total_required_channels, storage)))
+    print_connector_recommendation(
+        get_connectors(total_required_channels, storage)
+    )
+    # print(", ".join(get_connectors(total_required_channels, storage)))
 
 
 def calculate_mp(width, height):
@@ -621,7 +627,7 @@ def calculate_mp(width, height):
     Returns:
         float: The calculated megapixel value.
     """
-    print(f"{width}x{height}")
+    log.info("%ix%i", width, height)
     return (width * height) / 1000000
 
 
