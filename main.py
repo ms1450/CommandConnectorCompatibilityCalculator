@@ -11,12 +11,14 @@ from colorama import Fore, Style
 
 from app.calculations import (
     recommend_connectors,
-    identify_model_column,
-    get_camera_count,
     get_camera_match,
+    compile_camera_mp_channels,
 )
-import app.file_handling as fh
-from app.formatting import get_camera_set
+from app.file_handling import (
+    parse_hardware_compatibility_list,
+    parse_customer_list,
+)
+from app.formatting import sanitize_customer_data, get_manufacturer_set
 from app.output import print_results
 from app import log
 
@@ -46,13 +48,16 @@ def main():
         None
     """
 
-    verkada_cameras = fh.parse_hardware_compatibility_list(
-        "Verkada Command Connector Compatibility.csv"
+    verkada_compatibility_list = compile_camera_mp_channels(
+        parse_hardware_compatibility_list(
+            "Verkada Command Connector Compatibility.csv"
+        )
     )
-    verkada_cameras_list = get_camera_set(verkada_cameras)
-
-    customer_cameras_raw = fh.parse_customer_list(
-        "./Camera Compatibility Sheets/Camera Compatibility Sheet 5.csv"
+    customer_cameras_list = sanitize_customer_data(
+        parse_customer_list(
+            "./Camera Compatibility Sheets/customer_sheet_8.csv"
+        ),
+        get_manufacturer_set(verkada_compatibility_list),
     )
 
     # NOTE: Uncomment to print raw csv
@@ -61,23 +66,18 @@ def main():
     #     + customer_cameras_raw.T.values.tolist()
     # )
 
-    model_column = identify_model_column(
-        customer_cameras_raw, verkada_cameras_list
+    matched_cameras = get_camera_match(
+        customer_cameras_list, verkada_compatibility_list
     )
-    if model_column is not None:
-        customer_cameras = get_camera_count(model_column, customer_cameras_raw)
-        customer_cameras_list = get_camera_set(customer_cameras)
-        recommend_connectors(customer_cameras, verkada_cameras_list)
-        traced_cameras = get_camera_match(
-            customer_cameras_list, verkada_cameras
-        )
-        print_results(customer_cameras, traced_cameras)
+    if matched_cameras is not None:
+        recommend_connectors(matched_cameras, verkada_compatibility_list)
+        print_results(matched_cameras, verkada_compatibility_list)
     else:
         log.critical(
             "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
         )
 
 
-# Execute if being ran directly
+# Execute if being run directly
 if __name__ == "__main__":
     main()
