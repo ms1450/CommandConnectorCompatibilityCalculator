@@ -11,6 +11,7 @@ import re
 from typing import Dict, List, Optional, TypedDict
 
 # Third-party library imports
+import colorama
 import numpy as np
 import pandas as pd
 from pandas import Series
@@ -20,8 +21,10 @@ from thefuzz import fuzz, process
 from app import log, CompatibleModel
 from app.formatting import get_camera_set, find_verkada_camera
 
-# Required storage in days
-RETENTION = 30
+RETENTION = 30  # Required storage in days
+
+# Initialize colorama
+colorama.init(autoreset=True)
 
 
 class Connector(TypedDict):
@@ -203,9 +206,12 @@ def get_camera_count(
     Returns:
         Dict[str, int]: A dictionary containing camera names and counts.
     """
-    if count_column_name := identify_count_column(customer_list):
-        log.info("Found Camera Count Column: %s", count_column_name)
-        results["count"] = customer_list[count_column_name]
+    if count_column_index := identify_count_column(customer_list):
+        log.info(
+            "Found Camera Count Column: %s",
+            customer_list.columns[count_column_index],
+        )
+        results["count"] = customer_list.iloc[:, count_column_index]
     else:
         log.info("No Camera Count Found, calculating using model names")
         results["count"] = results.groupby("name")["name"].transform("count")
@@ -313,7 +319,7 @@ def compile_camera_mp_channels(
         11        Avigilon   1.0-H3-DC1  1.0       1.0
     """
 
-    camera_map = pd.read_csv("../Camera Specs.csv")
+    camera_map = pd.read_csv("./Camera Specs.csv")
     # Iterate through each row in the DataFrame
     for _, row in camera_map.iterrows():
         model_name = row["Model Name"]

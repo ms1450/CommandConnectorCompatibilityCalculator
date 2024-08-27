@@ -6,16 +6,24 @@ Purpose: The contents of this file are to perform formatting for the
 
 import os
 import re
-from typing import List, Set
+from typing import List, Optional, Set
+
 import pandas as pd
-from pandas import Series
-from nltk.downloader import download
-from nltk.data import find
+import colorama
+from colorama import Fore, Style
 from nltk.corpus import words
+from nltk.data import find
+from nltk.downloader import download
+from pandas import Series
+from tabulate import tabulate
 
 from app import CompatibleModel
 
 NLTK_DATA_PATH = "./misc/nltk_data"
+
+
+# Initialize colorama
+colorama.init(autoreset=True)
 
 
 def get_camera_set(verkada_list: List[CompatibleModel]) -> Set[str]:
@@ -48,8 +56,18 @@ def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
 
 def find_verkada_camera(
     verkada_model: str, verkada_camera_list: List[CompatibleModel]
-) -> CompatibleModel | None:
-    """Finds the Verkada camera model in the list."""
+) -> Optional[CompatibleModel]:
+    """Find a matching camera by its name.
+
+    Args:
+        camera_name (str): The name of the camera to search for.
+        verkada_cameras (List[CompatibleModel]): List of compatible
+            models.
+
+    Returns:
+        Optional[CompatibleModel]: The matching camera object if found,
+            otherwise None.
+    """
     return next(
         (
             camera
@@ -204,3 +222,27 @@ def strip_ansi_codes(text: str) -> str:
     """
 
     return re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]").sub("", text)
+
+
+def tabulate_data(data: List[List[str]]) -> None:
+    """Tabulate and print the data.
+
+    Args:
+        data (List[List[str]]): Transposed data where each list
+            represents a column.
+    Returns:
+        None
+    """
+    # Extract column names (first element)
+    headers = [
+        f"{Fore.LIGHTBLACK_EX}{row[0]}{Style.RESET_ALL}" for row in data
+    ]
+
+    # Extract data starting from the second element
+    table = [row[1:] for row in data]
+
+    # Pair values off
+    combined_data = list(zip(*table))
+
+    # Print the tabulated data
+    print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
