@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, TypedDict
 import colorama
 import numpy as np
 import pandas as pd
-from colorama import Fore, Style
+from pandas import Series
 from thefuzz import fuzz, process
 
 # Local/application-specific imports
@@ -101,9 +101,9 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 )
 
 
-def identify_model_column(
+def identify_model_column_name(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
-) -> Optional[int]:
+) -> Optional[Series]:
     """Identify the column with the camera models in the customer list
 
     Args:
@@ -167,7 +167,7 @@ def identify_model_column(
 
     # Get the index of the column with the highest score
     if not scores.empty and scores.max() > 0:
-        return int(scores.idxmax())
+        return scores.idxmax()
     log.warning("%sNo valid scores found.%s Check your input data.")
     return None
 
@@ -206,9 +206,12 @@ def get_camera_count(
     Returns:
         Dict[str, int]: A dictionary containing camera names and counts.
     """
-    if count_column_name := identify_count_column(customer_list):
-        log.info("Found Camera Count Column: %s", count_column_name)
-        results["count"] = customer_list[count_column_name]
+    if count_column_index := identify_count_column(customer_list):
+        log.info(
+            "Found Camera Count Column: %s",
+            customer_list.columns[count_column_index],
+        )
+        results["count"] = customer_list.iloc[:, count_column_index]
     else:
         log.info("No Camera Count Found, calculating using model names")
         results["count"] = results.groupby("name")["name"].transform("count")
@@ -229,9 +232,7 @@ def get_camera_match(
         verkada_cameras (List[CompatibleModel]): The list of known cameras.
 
     Returns:
-        pd.DataFrame: A Pandas DataFrame where each entry will contain the
-            Information about the camera such as camera name, match type
-            and model.
+        pd.DataFrame: The matched cameras with count.
     """
 
     def match_camera(camera):
@@ -253,7 +254,7 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": f"{Fore.GREEN}exact{Style.RESET_ALL}",
+                    "match_type": "exact",
                     "verkada_model": match,
                 }
             )
@@ -261,7 +262,7 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": f"{Fore.CYAN}identified{Style.RESET_ALL}",
+                    "match_type": "identified",
                     "verkada_model": match,
                 }
             )
@@ -269,19 +270,19 @@ def get_camera_match(
             return pd.Series(
                 {
                     "name": camera,
-                    "match_type": f"{Fore.YELLOW}potential{Style.RESET_ALL}",
+                    "match_type": "potential",
                     "verkada_model": match,
                 }
             )
         return pd.Series(
             {
                 "name": camera,
-                "match_type": f"{Fore.RED}unsupported{Style.RESET_ALL}",
+                "match_type": "unsupported",
                 "verkada_model": None,
             }
         )
 
-    camera_column = identify_model_column(customer_list, verkada_cameras)
+    camera_column = identify_model_column_name(customer_list, verkada_cameras)
     log.info("Highest Scoring Camera Column: '%s'", camera_column)
     model_data = customer_list[camera_column]
     verkada_cameras_list = get_camera_set(verkada_cameras)
