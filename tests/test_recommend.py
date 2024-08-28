@@ -6,6 +6,7 @@ Purpose: Test recursive logic using pytest.
 import pytest
 from app.recommend import get_connectors
 
+
 @pytest.mark.parametrize(
     "channels, storage, recommendation, expected",
     [
