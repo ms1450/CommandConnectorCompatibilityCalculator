@@ -578,7 +578,9 @@ def get_connectors(
     return recommendation  # Return the list of selected connectors
 
 
-def recommend_connector(low_channels: int, high_channels: int, storage: float):
+def recommend_connector(
+    low_channels: int, high_channels: int, storage: float
+) -> List[str]:
     """
     Recommend a connector based on the specified low and high channel
     requirements and storage capacity. This function calculates the total
@@ -600,7 +602,12 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
     log.info("Total storage needed: %0.2f", storage)
     total_required_channels = low_channels + high_channels * 2
     log.info("Total channels needed: %i", total_required_channels)
-    print(", ".join(get_connectors(total_required_channels, storage)))
+    log.info(
+        "Recommended Connectors: %s",
+        ", ".join(get_connectors(total_required_channels, storage)),
+    )
+
+    return get_connectors(total_required_channels, storage)
 
 
 def calculate_mp(width, height):
@@ -658,7 +665,7 @@ def count_mp(
 
 def recommend_connectors(
     camera_dataframe: pd.DataFrame, verkada_camera_list: List[CompatibleModel]
-):
+) -> List[str]:
     """
     Generate connector recommendations based on customer camera data and
     model specifications. This function processes camera counts and
@@ -682,4 +689,4 @@ def recommend_connectors(
     low_storage = calculate_low_mp_storage(low_mp_count, RETENTION)
     high_storage = calculate_4k_storage(high_mp_count, RETENTION)
     total_storage = low_storage + high_storage
-    recommend_connector(low_mp_count, high_mp_count, total_storage)
+    return recommend_connector(low_mp_count, high_mp_count, total_storage)

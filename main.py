@@ -70,8 +70,10 @@ def main():
         customer_cameras_list, verkada_compatibility_list
     )
     if matched_cameras is not None:
-        recommend_connectors(matched_cameras, verkada_compatibility_list)
-        print_results(matched_cameras, verkada_compatibility_list)
+        connectors = recommend_connectors(
+            matched_cameras, verkada_compatibility_list
+        )
+        print_results(matched_cameras, verkada_compatibility_list, connectors)
     else:
         log.critical(
             "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
