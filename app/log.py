@@ -5,7 +5,7 @@ Purpose: Set a unified logger across all scripts.
 
 import logging
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 
 
 class CenterAlignFormatter(logging.Formatter):
