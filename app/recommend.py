@@ -82,8 +82,8 @@ COMMAND_CONNECTORS: List[Connector] = [
     {
         "name": "CC700-32TB",
         "storage": 32,
-        "low_channels": 25,
-        "high_channels": 12,
+        "low_channels": 50,
+        "high_channels": 25,
     },
 ]
 
@@ -115,6 +115,9 @@ def get_connectors(
         channels and storage requirements.
     """
     log.debug("\n-----Entering iteration-----")
+    # Set to zero if negative
+    channels = max(channels, 0)
+    storage = max(storage, 0)
     log.debug("Channels: %i", channels)
     log.debug("Storage: %0.3f", storage)
     # Base case: Initialize recommendation list
@@ -133,6 +136,21 @@ def get_connectors(
     min_surplus_storage = float("inf")
 
     for device in COMMAND_CONNECTORS:
+
+        # Alter values to prefer excess more than deficit
+        # Alter Storage
+        if 4 < storage < 8:
+            storage = 8
+        if 8 < storage < 16:
+            storage = 16
+        if 16 < storage < 32:
+            storage = 32
+
+        # Alter channels
+        if 10 < channels < 25:
+            channels = 25
+
+        # Initiate surplus
         surplus_channels = abs(device["low_channels"] - channels)
         surplus_storage = abs(device["storage"] - storage)
         log.debug(device["name"])
