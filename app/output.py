@@ -14,7 +14,7 @@ from app import CompatibleModel
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
-def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
+def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel], connectors):
     """Print and save a formatted list of camera data."""
 
     def colorize_type(value):
@@ -57,21 +57,24 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
         f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Model{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Min Firmware Version{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
     ]
 
     output.sort(key=lambda x: x[2], reverse=True)
     print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
+    print("Connectors: ")
+    for connector in connectors:
+        print(connector)
 
     plain_headers = [
         "Camera Name",
         "Count",
         "Match Type",
-        "Manufacturer",
         "Model",
+        "Manufacturer",
         "Min Firmware Version",
         "Notes",
     ]
