@@ -10,7 +10,6 @@ import colorama
 from colorama import Fore, Style
 
 from app.calculations import (
-    recommend_connectors,
     get_camera_match,
     compile_camera_mp_channels,
 )
@@ -20,6 +19,7 @@ from app.file_handling import (
 )
 from app.formatting import sanitize_customer_data, get_manufacturer_set
 from app.output import print_results
+from app.recommend import recommend_connectors
 from app import log
 
 # Initialize colorized output
@@ -55,7 +55,7 @@ def main():
     )
     customer_cameras_list = sanitize_customer_data(
         parse_customer_list(
-            "./Camera Compatibility Sheets/customer_sheet_8.csv"
+            "./Camera Compatibility Sheets/customer_sheet_1.csv"
         ),
         get_manufacturer_set(verkada_compatibility_list),
     )
@@ -70,10 +70,8 @@ def main():
         customer_cameras_list, verkada_compatibility_list
     )
     if matched_cameras is not None:
-        connectors = recommend_connectors(
-            matched_cameras, verkada_compatibility_list
-        )
-        print_results(matched_cameras, verkada_compatibility_list, connectors)
+        print_results(matched_cameras, verkada_compatibility_list)
+        recommend_connectors(matched_cameras, verkada_compatibility_list)
     else:
         log.critical(
             "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL

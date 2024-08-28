@@ -14,15 +14,12 @@ from app import CompatibleModel
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
-def print_results(
-    results: pd.DataFrame, verkada_list: List[CompatibleModel], connectors
-):
+def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     """Print and save a formatted list of camera data.
 
     Args:
         results (pd.DataFrame): Dataframe containing results of each camera.
         verkada_list (List[CompatibleModel]): List of CompatibleModel objects
-        connectors (List[str]): List of Connectors recommended
 
     Returns:
         None
@@ -75,7 +72,6 @@ def print_results(
 
     output.sort(key=lambda x: x[2], reverse=True)
     print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
-    print("Recommended Connectors: " + ", ".join(connectors))
 
     plain_headers = [
         "Camera Name",
@@ -98,8 +94,10 @@ def print_results(
 
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
+
     # NOTE: Uncomment to write to html file
     # df.to_html("camera_models.html", index=False)
+
     # NOTE: Uncomment to write output to a csv
     # with open("camera_models.txt", "w", encoding="UTF-8") as f:
     #     f.write(

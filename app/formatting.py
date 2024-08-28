@@ -6,7 +6,8 @@ Purpose: The contents of this file are to perform formatting for the
 
 import os
 import re
-from typing import List, Optional, Set
+from collections import defaultdict
+from typing import Dict, List, Optional, Set
 
 import pandas as pd
 import colorama
@@ -249,3 +250,50 @@ def tabulate_data(data: List[List[str]]) -> None:
 
     # Print the tabulated data
     print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
+
+
+def print_connector_recommendation(recommendations: List[str]):
+    """
+    Print a formatted table of device recommendations and their counts.
+    This function aggregates the recommendations and displays the results
+    in a simple tabular format.
+
+    Args:
+        recommendations (List[str]): A list of device recommendations.
+
+    Returns:
+        None: This function prints the output directly and does not
+            return a value.
+
+    Examples:
+        print_connector_recommendation([
+            'Device A',
+            'Device B',
+            'Device A'
+        ])
+    """
+
+    # Count occurrences of each CC automatically creating keys of 0
+    device_count: Dict[str, int] = defaultdict(int)
+
+    for device in recommendations:
+        # Add device to dictionary if it doesn't exist and/or increment by one
+        device_count[device] += 1
+
+    # Convert dict to tuple
+    device_table = list(device_count.items())
+
+    # NOTE: Uncomment to print recommendations to terminal
+    print(
+        tabulate(
+            device_table,
+            headers=["Device", "Count"],
+            tablefmt="rounded_outline",
+        )
+    )
+
+    # NOTE: Uncomment to output to CSV
+    # pd.DataFrame(device_count).to_csv("connector_recommendations.csv")
+
+    # NOTE: Uncomment to output to HTML
+    # pd.DataFrame(device_table).to_html("connector_recommendations.html")
