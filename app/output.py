@@ -15,7 +15,15 @@ from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
 def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
-    """Print and save a formatted list of camera data."""
+    """Print and save a formatted list of camera data.
+
+    Args:
+        results (pd.DataFrame): Dataframe containing results of each camera.
+        verkada_list (List[CompatibleModel]): List of CompatibleModel objects
+
+    Returns:
+        None
+    """
 
     def colorize_type(value):
         if value == "unsupported":
@@ -34,21 +42,20 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     output = []
 
     for _, row in results.iterrows():
-        camera_name = row["name"]
-        camera_count = int(row["count"])
-        match_type = colorize_type(row["match_type"])
-        v_camera_name, v_manufacturer, v_min_firmware, v_notes = (
-            list_verkada_camera_details(row["verkada_model"], verkada_list)
-        )
+        camera_data = {
+            "camera_name": row["name"],
+            "camera_count": int(row["count"]),
+            "match_type": colorize_type(row["match_type"]),
+            "verkada_details": list_verkada_camera_details(
+                row["verkada_model"], verkada_list
+            ),
+        }
         output.append(
             [
-                camera_name,
-                camera_count,
-                match_type,
-                v_camera_name,
-                v_manufacturer,
-                v_min_firmware,
-                v_notes,
+                camera_data["camera_name"],
+                camera_data["camera_count"],
+                camera_data["match_type"],
+                *camera_data["verkada_details"],
             ]
         )
 
@@ -57,8 +64,8 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
         f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Model{Style.RESET_ALL}",
+        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Min Firmware Version{Style.RESET_ALL}",
         f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
     ]
@@ -70,8 +77,8 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
         "Camera Name",
         "Count",
         "Match Type",
-        "Manufacturer",
         "Model",
+        "Manufacturer",
         "Min Firmware Version",
         "Notes",
     ]
