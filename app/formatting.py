@@ -285,7 +285,11 @@ def print_connector_recommendation(recommendations: List[str]):
 
     # NOTE: Uncomment to print recommendations to terminal
     print(
-        tabulate(device_table, headers=["Device", "Count"], tablefmt="simple")
+        tabulate(
+            device_table,
+            headers=["Device", "Count"],
+            tablefmt="rounded_outline",
+        )
     )
 
     # NOTE: Uncomment to output to CSV
