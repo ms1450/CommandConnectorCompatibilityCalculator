@@ -109,8 +109,8 @@ def identify_count_column(customer_list: pd.DataFrame) -> Optional[int]:
 
     return next(
         (
-            i
-            for i, col in enumerate(customer_list.columns)
+            col_num
+            for col_num, col in enumerate(customer_list.columns)
             if isinstance(col, str) and count_column_pattern.search(col)
         ),
         None,
