@@ -17,8 +17,8 @@ import pandas as pd
 from thefuzz import fuzz, process
 
 # Local/application-specific imports
-from app import log, CompatibleModel
 from app.formatting import get_camera_set, find_verkada_camera
+from app import log, CompatibleModel, Connector
 
 # Initialize colorama
 colorama.init(autoreset=True)
@@ -481,3 +481,27 @@ def count_mp(
                     high_count += int(row["count"])
 
     return [low_count, high_count]
+
+
+def calculate_excess_channels(channels: int, connectors: List[Connector]):
+    """
+    Calculate the excess number of channels based on the provided
+    connectors.
+
+    This function sums the low channel capacities of the given connectors
+    and determines how many channels exceed the specified number of
+    channels. It is useful for assessing whether the available connectors
+    meet or exceed the required channel capacity.
+
+    Args:
+        channels (int): The number of channels required.
+        connectors (List[Connector]): A list of connectors with their low
+            channel capacities.
+
+    Returns:
+        int: The excess number of channels, which is positive if there
+            are more channels than required, or negative if there are
+            not enough channels.
+    """
+    total_channels = sum(connector["low_channels"] for connector in connectors)
+    return total_channels - channels

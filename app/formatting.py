@@ -18,7 +18,7 @@ from nltk.downloader import download
 from pandas import Series
 from tabulate import tabulate
 
-from app import CompatibleModel
+from app import CompatibleModel, Connector
 
 NLTK_DATA_PATH = "./misc/nltk_data"
 
@@ -252,7 +252,7 @@ def tabulate_data(data: List[List[str]]) -> None:
     print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
 
 
-def print_connector_recommendation(recommendations: List[str]):
+def print_connector_recommendation(recommendations: List[Connector]):
     """
     Print a formatted table of device recommendations and their counts.
     This function aggregates the recommendations and displays the results
@@ -278,7 +278,7 @@ def print_connector_recommendation(recommendations: List[str]):
 
     for device in recommendations:
         # Add device to dictionary if it doesn't exist and/or increment by one
-        device_count[device] += 1
+        device_count[device["name"]] += 1
 
     # Convert dict to tuple
     device_table = list(device_count.items())

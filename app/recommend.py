@@ -4,47 +4,27 @@ Purpose: Recommend a Command Connector based on a given site of criteria.
 """
 
 # Standard library imports
-from typing import List, Optional, TypedDict
+from typing import List, Optional
 
 # Third-party library imports
+import colorama
 import pandas as pd
+from colorama import Fore, Style
+
+from app import CompatibleModel, Connector, log
 
 # Local/application-specific imports
 from app.calculations import (
     calculate_4k_storage,
+    calculate_excess_channels,
     calculate_low_mp_storage,
     count_mp,
 )
 from app.formatting import print_connector_recommendation
-from app import CompatibleModel, log
+
+colorama.init(autoreset=True)  # Initialize colorized output
 
 RETENTION = 30  # Required storage in days
-
-
-class Connector(TypedDict):
-    """
-    Typed dictionary that represents a connector with its associated
-    attributes. It encapsulates the details of a connector, including its
-    name, storage capacity, and channel range.
-
-    This class is used to define the properties of a connector in the
-    context of camera compatibility calculations. Each instance of this
-    class holds specific information that can be utilized for managing
-    connectors and their configurations.
-
-    Attributes:
-        name (str): The name of the connector.
-        storage (int): The storage capacity of the connector in terabytes.
-        low_channels (int): The minimum number of channels supported by
-            the connector.
-        high_channels (int): The maximum number of channels supported by
-            the connector.
-    """
-
-    name: str
-    storage: int
-    low_channels: int
-    high_channels: int
 
 
 # Ensure the dictionaries match the `Connector` TypedDict structure
@@ -96,8 +76,10 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 
 
 def get_connectors(
-    channels: int, storage: float, recommendation: Optional[List[str]] = None
-) -> List[str]:
+    channels: int,
+    storage: float,
+    recommendation: Optional[List[Connector]] = None,
+) -> List[Connector]:
     """Recursive function to recommend a Command Connector.
 
     Retrieve a list of recommended connectors based on available channels
@@ -172,7 +154,7 @@ def get_connectors(
 
     if best_connector:
         log.debug("Recommending : %s", best_connector["name"])
-        recommendation.append(best_connector["name"])
+        recommendation.append(best_connector)
         # Reduce the remaining channels and storage requirements
         if channels > 0:
             channels -= best_connector["low_channels"]
@@ -208,8 +190,13 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
     log.info("Total storage needed: %0.2f", storage)
     total_required_channels = low_channels + high_channels * 2
     log.info("Total channels needed: %i", total_required_channels)
-    print_connector_recommendation(
-        get_connectors(total_required_channels, storage)
+    recommendations = get_connectors(total_required_channels, storage)
+    print_connector_recommendation(recommendations)
+    excess_channels = calculate_excess_channels(
+        total_required_channels, recommendations
+    )
+    print(
+        f"{Fore.LIGHTMAGENTA_EX}Excess channels: {excess_channels}{Style.RESET_ALL}"
     )
     # print(", ".join(get_connectors(total_required_channels, storage)))
 
