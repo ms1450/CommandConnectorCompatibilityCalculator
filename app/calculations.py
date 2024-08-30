@@ -418,7 +418,7 @@ def calculate_low_mp_storage(channels: int, retention: int) -> float:
         return channels * 0.256
     if retention <= 60:
         return channels * 0.512
-    return channels * 0.768 * 90 if retention <= 90 else 0
+    return channels * 0.768 if retention <= 90 else 0
 
 
 def calculate_4k_storage(channels: int, retention: int) -> float:
@@ -442,10 +442,10 @@ def calculate_4k_storage(channels: int, retention: int) -> float:
             the retention value is not supported.
     """
     if retention <= 30:
-        return channels * 0.512 * 30
+        return channels * 0.512
     if retention <= 60:
-        return channels * 1.024 * 60
-    return channels * 2.048 * 90 if retention <= 90 else 0
+        return channels * 1.024
+    return channels * 2.048 if retention <= 90 else 0
 
 
 def calculate_mp(width, height):
