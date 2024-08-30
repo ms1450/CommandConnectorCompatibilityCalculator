@@ -55,7 +55,7 @@ def main():
     )
     customer_cameras_list = sanitize_customer_data(
         parse_customer_list(
-            "./Camera Compatibility Sheets/customer_sheet_1.csv"
+            "./Camera Compatibility Sheets/customer_sheet_9.csv"
         ),
         get_manufacturer_set(verkada_compatibility_list),
     )
