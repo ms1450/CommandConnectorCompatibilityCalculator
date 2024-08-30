@@ -14,9 +14,7 @@ from app import CompatibleModel
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
-def print_results(
-    results: pd.DataFrame, verkada_list: List[CompatibleModel]
-):
+def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     """Print and save a formatted list of camera data.
 
     Args:
