@@ -134,14 +134,32 @@ def get_camera_count(
             "Found Camera Count Column: %s",
             customer_list.columns[count_column_index],
         )
-        results["count"] = customer_list.iloc[:, count_column_index]
+        # Convert count column to numeric, replacing non-numeric values with 1
+        count_column = pd.to_numeric(
+            customer_list.iloc[:, count_column_index], errors="coerce"
+        ).fillna(1)
+
+        # Group by camera name and sum the counts
+        camera_counts = (
+            results.groupby("name")
+            .apply(lambda x: count_column[x.index].sum())
+            .reset_index(name="count")
+        )
+
+        # Merge the counts back into the results DataFrame
+        results = results.merge(camera_counts, on="name", how="left")
     else:
         log.info("No Camera Count Found, calculating using model names")
         results["count"] = results.groupby("name")["name"].transform("count")
+
+        # Keep only unique camera names
     results = results.drop_duplicates(["name"])
+
+    # Filter out rows where name is NA and match_type is "empty"
     results = results[
         (results["name"].notna()) | (results["match_type"] != "empty")
     ]
+
     return results
 
 

@@ -120,7 +120,7 @@ def sanitize_customer_data(
     customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:
     """Sanitize Customer List: remove whitespace, IPs, MACs, special
-    chars, and serial number columns
+    chars, and serial number columns. Preserves duplicate camera name entries.
 
     Args:
         customer_list (pd.DataFrame): Customer List.
@@ -145,7 +145,6 @@ def sanitize_customer_data(
 
     # Extract english words from NLTK
     english_words = {word.lower() for word in words.words()}
-    all_keywords = dictionary | english_words
 
     # Regex Patterns
     integer_pattern = r"^[-+]?\d+$"
@@ -159,6 +158,7 @@ def sanitize_customer_data(
         r"^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
     )
     special_char_pattern = r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
+    sequential_pattern = r"^#$"  # Updated to match exactly '#'
 
     def remove_keywords(value: str) -> str:
         if not value:
@@ -172,13 +172,16 @@ def sanitize_customer_data(
         filtered_words = [
             word
             for word in word_set
-            if word.lower() not in all_keywords
-            and not re.match(ip_pattern, word)
-            and not re.match(mac_pattern, word)
-            and not re.match(special_char_pattern, word)
-            and (not multiple_words or not re.match(integer_pattern, word))
+            if word in dictionary  # Keep camera names
+            or (
+                word.lower()
+                not in english_words  # Remove common English words
+                and not re.match(ip_pattern, word)
+                and not re.match(mac_pattern, word)
+                and not re.match(special_char_pattern, word)
+                and (not multiple_words or not re.match(integer_pattern, word))
+            )
         ]
-
         return " ".join(filtered_words)
 
     # Apply the remove_keywords function to all cells
@@ -193,13 +196,21 @@ def sanitize_customer_data(
         ):
             columns_to_remove.append(column)
 
+    # Identify sequential columns (updated logic)
+    sequential_columns = [
+        col
+        for col in sanitized_df.columns
+        if re.match(sequential_pattern, col)
+    ]
+
     # Remove columns with headers containing 'Serial', 'SN', or 'S/N'
     serial_columns = [
         col
         for col in sanitized_df.columns
-        if any(term in col.upper() for term in ["SERIAL", "SN", "S/N"])
+        if any(term in col.lower() for term in ["serial", "sn", "s/n"])
     ]
     columns_to_remove.extend(serial_columns)
+    columns_to_remove.extend(sequential_columns)
     sanitized_df = sanitized_df.drop(columns=columns_to_remove)
 
     # Remove empty rows and columns
