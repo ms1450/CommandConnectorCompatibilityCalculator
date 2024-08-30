@@ -135,18 +135,18 @@ def get_camera_count(
             customer_list.columns[count_column_index],
         )
         # Convert count column to numeric, replacing non-numeric values with 1
-        count_column = pd.to_numeric(
+        count_column: pd.Series = pd.to_numeric(
             customer_list.iloc[:, count_column_index], errors="coerce"
         ).fillna(1)
 
-        # Group by camera name and sum the counts
-        camera_counts = (
-            results.groupby("name")
-            .apply(lambda x: count_column[x.index].sum())
-            .reset_index(name="count")
+        camera_counts_dict = {
+            name: count_column.iloc[group].sum()
+            for name, group in results.groupby("name").groups.items()
+        }
+        # Convert dictionary to DataFrame and merge
+        camera_counts = pd.DataFrame(
+            list(camera_counts_dict.items()), columns=["name", "count"]
         )
-
-        # Merge the counts back into the results DataFrame
         results = results.merge(camera_counts, on="name", how="left")
     else:
         log.info("No Camera Count Found, calculating using model names")
