@@ -135,18 +135,18 @@ def get_camera_count(
             customer_list.columns[count_column_index],
         )
         # Convert count column to numeric, replacing non-numeric values with 1
-        count_column = pd.to_numeric(
+        count_column: pd.Series = pd.to_numeric(
             customer_list.iloc[:, count_column_index], errors="coerce"
         ).fillna(1)
 
-        # Group by camera name and sum the counts
-        camera_counts = (
-            results.groupby("name")
-            .apply(lambda x: count_column[x.index].sum())
-            .reset_index(name="count")
+        camera_counts_dict = {
+            name: count_column.iloc[group].sum()
+            for name, group in results.groupby("name").groups.items()
+        }
+        # Convert dictionary to DataFrame and merge
+        camera_counts = pd.DataFrame(
+            list(camera_counts_dict.items()), columns=["name", "count"]
         )
-
-        # Merge the counts back into the results DataFrame
         results = results.merge(camera_counts, on="name", how="left")
     else:
         log.info("No Camera Count Found, calculating using model names")
@@ -418,7 +418,7 @@ def calculate_low_mp_storage(channels: int, retention: int) -> float:
         return channels * 0.256
     if retention <= 60:
         return channels * 0.512
-    return channels * 0.768 * 90 if retention <= 90 else 0
+    return channels * 0.768 if retention <= 90 else 0
 
 
 def calculate_4k_storage(channels: int, retention: int) -> float:
@@ -442,10 +442,10 @@ def calculate_4k_storage(channels: int, retention: int) -> float:
             the retention value is not supported.
     """
     if retention <= 30:
-        return channels * 0.512 * 30
+        return channels * 0.512
     if retention <= 60:
-        return channels * 1.024 * 60
-    return channels * 2.048 * 90 if retention <= 90 else 0
+        return channels * 1.024
+    return channels * 2.048 if retention <= 90 else 0
 
 
 def calculate_mp(width, height):
