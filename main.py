@@ -50,12 +50,12 @@ def main():
 
     verkada_compatibility_list = compile_camera_mp_channels(
         parse_hardware_compatibility_list(
-            "Verkada Command Connector Compatibility.csv"
+            "Verkada Command Connector Compatibility (BACKUP).csv"
         )
     )
     customer_cameras_list = sanitize_customer_data(
         parse_customer_list(
-            "./Camera Compatibility Sheets/customer_sheet_9.csv"
+            "./Camera Compatibility Sheets/customer_sheet_2.csv"
         ),
         get_manufacturer_set(verkada_compatibility_list),
     )
