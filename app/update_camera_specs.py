@@ -37,8 +37,10 @@ def download_hcl(url: str) -> Optional[str]:
 
     with webdriver.Chrome(options=chrome_options) as driver:
         driver.get(url)
-        button_xpath = ("//button[contains(@class, 'hidden') and contains(@class, 'md:block')]"
-                        "//a[.//span[text()='CSV']]")
+        button_xpath = (
+            "//button[contains(@class, 'hidden') and contains(@class, 'md:block')]"
+            "//a[.//span[text()='CSV']]"
+        )
         download_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, button_xpath))
         )
@@ -48,7 +50,9 @@ def download_hcl(url: str) -> Optional[str]:
         max_wait_time = 30
         start_time = time.time()
         while time.time() - start_time < max_wait_time:
-            csv_files = [f for f in os.listdir(download_dir) if f.endswith(".csv")]
+            csv_files = [
+                f for f in os.listdir(download_dir) if f.endswith(".csv")
+            ]
             if csv_files:
                 print(f"CSV file downloaded successfully to {download_dir}!")
                 return os.path.join(download_dir, csv_files[0])
