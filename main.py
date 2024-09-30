@@ -1,3 +1,9 @@
+"""
+Author: Ian Young
+Co-Author: Mehul Sen
+Purpose: Create a GUI through which the application may be ran and managed.
+"""
+
 from tkinter import (
     LEFT,
     RIGHT,
@@ -30,32 +36,60 @@ RETENTION = 30
 
 
 class CameraCompatibilityApp:
-    def __init__(self, root):
-        self.root = root
+    """A GUI application for checking camera compatibility based on CSV files.
+
+    This application allows users to select a CSV file, drop it into the
+    interface, and run a compatibility check to display results.
+
+    Args:
+        root (Tk): The root window of the application.
+
+    Methods:
+        select_file: Opens a file dialog to select a customer CSV file.
+        on_drop: Handles the event when a file is dropped onto the
+            application window.
+        run_check: Executes the compatibility check using the selected
+            customer file and displays the results.
+    """
+
+    def __init__(self, window):
+        """Initializes the CameraCompatibilityApp for checking compatibility.
+
+        This constructor sets up the main window, including buttons for
+        file selection and running compatibility checks, as well as a
+        text widget for displaying results.
+
+        Args:
+            window (Tk): The window window of the application.
+
+        Returns:
+            None
+        """
+        self.root = window
         self.root.title("Camera Compatibility Checker")
         self.customer_file_path = None
 
-        style = ThemedStyle(root)
+        style = ThemedStyle(window)
         style.set_theme("arc")
 
-        self.label = Label(root, text="Select or Drop Customer CSV File")
+        self.label = Label(window, text="Select or Drop Customer CSV File")
         self.label.pack(pady=20)
 
         self.button = Button(
-            root, text="Select File", command=self.select_file
+            window, text="Select File", command=self.select_file
         )
         self.button.pack(pady=10)
 
-        root.drop_target_register(DND_FILES)
-        root.dnd_bind("<<Drop>>", self.on_drop)
+        window.drop_target_register(DND_FILES)
+        window.dnd_bind("<<Drop>>", self.on_drop)
 
         self.submit_button = Button(
-            root, text="Run Compatibility Check", command=self.run_check
+            window, text="Run Compatibility Check", command=self.run_check
         )
         self.submit_button.pack(pady=20)
 
         # Scrollable text frame for results
-        frame = Frame(root)
+        frame = Frame(window)
         frame.pack(fill="both", expand=True)
 
         self.text_widget = Text(
@@ -72,6 +106,17 @@ class CameraCompatibilityApp:
         self.text_widget.config(yscrollcommand=scrollbar.set)
 
     def select_file(self):
+        """Opens a file dialog for the user to select a CSV file.
+
+        If a file is selected, it updates the internal file path and the
+        label to reflect the selected file.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         if file_path := filedialog.askopenfilename(
             filetypes=[("CSV files", "*.csv")]
         ):
@@ -79,10 +124,40 @@ class CameraCompatibilityApp:
             self.label.config(text=f"Selected: {file_path}")
 
     def on_drop(self, event):
+        """
+        Handles the event when a file is dropped onto the window.
+
+        This function updates the internal file path with the dropped
+        file's path and updates the label to indicate the file has
+        been dropped.
+
+        Args:
+            event: The event object containing information about the
+                drop action.
+
+        Returns:
+            None
+        """
         self.customer_file_path = event.data.strip("{}")
         self.label.config(text=f"Dropped: {self.customer_file_path}")
 
     def run_check(self):
+        """
+        Executes the compatibility check using the selected file.
+
+        This function verifies if a file has been selected, processes the
+        compatibility data, and updates the GUI with the results or logs
+        an error if no matches are found.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
         if not self.customer_file_path:
             log.critical("%sNo file selected.%s", Fore.RED, Style.RESET_ALL)
             return
