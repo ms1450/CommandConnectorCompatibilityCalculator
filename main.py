@@ -1,83 +1,130 @@
-"""
-Author: Mehul Sen
-Co-Author: Ian Young
-
-Purpose: Import a list of third-party cameras and return to the terminal
-    which cameras are compatible with the cloud connector.
-"""
-
-import colorama
-from colorama import Fore, Style
-
-from app.calculations import (
-    get_camera_match,
-    compile_camera_mp_channels,
+from tkinter import (
+    LEFT,
+    RIGHT,
+    Button,
+    Frame,
+    Label,
+    Scrollbar,
+    Text,
+    Y,
+    filedialog,
 )
+
+from colorama import Fore, Style, init
+from tkinterdnd2 import DND_FILES, TkinterDnD
+from ttkthemes import ThemedStyle
+
+from app import log
+from app.calculations import compile_camera_mp_channels, get_camera_match
 from app.file_handling import (
-    parse_hardware_compatibility_list,
     parse_customer_list,
+    parse_hardware_compatibility_list,
 )
-from app.formatting import sanitize_customer_data, get_manufacturer_set
+from app.formatting import get_manufacturer_set, sanitize_customer_data
 from app.output import print_results
 from app.recommend import recommend_connectors
-from app import log
 
 # Initialize colorized output
-colorama.init(autoreset=True)
+init(autoreset=True)
+RETENTION = 30
 
-RETENTION = 30  # Required storage in days
 
+class CameraCompatibilityApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Camera Compatibility Checker")
+        self.customer_file_path = None
 
-def main():
-    """
-    Main function that orchestrates the compatibility check between
-    Verkada cameras and customer cameras. It processes compatibility
-    data, identifies camera models, and outputs the matched results.
+        style = ThemedStyle(root)
+        style.set_theme("arc")
 
-    This function reads compatibility data from CSV files, identifies the
-    relevant camera models from the customer's list, and matches them
-    against the Verkada camera list. If a model column is found, it
-    retrieves the camera counts and prints the matched camera data;
-    otherwise, it notifies the user that the model column could not be
-    identified.
+        self.label = Label(root, text="Select or Drop Customer CSV File")
+        self.label.pack(pady=20)
 
-    Args:
-        None
-
-    Returns:
-        None
-    """
-
-    verkada_compatibility_list = compile_camera_mp_channels(
-        parse_hardware_compatibility_list(
-            "Verkada Command Connector Compatibility (BACKUP).csv"
+        self.button = Button(
+            root, text="Select File", command=self.select_file
         )
-    )
-    customer_cameras_list = sanitize_customer_data(
-        parse_customer_list(
-            "./Camera Compatibility Sheets/customer_sheet_2.csv"
-        ),
-        get_manufacturer_set(verkada_compatibility_list),
-    )
+        self.button.pack(pady=10)
 
-    # NOTE: Uncomment to print raw csv
-    # tabulate_data(
-    #     [customer_cameras_raw.columns.tolist()]
-    #     + customer_cameras_raw.T.values.tolist()
-    # )
+        root.drop_target_register(DND_FILES)
+        root.dnd_bind("<<Drop>>", self.on_drop)
 
-    matched_cameras = get_camera_match(
-        customer_cameras_list, verkada_compatibility_list
-    )
-    if matched_cameras is not None:
-        print_results(matched_cameras, verkada_compatibility_list)
-        recommend_connectors(matched_cameras, verkada_compatibility_list)
-    else:
-        log.critical(
-            "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
+        self.submit_button = Button(
+            root, text="Run Compatibility Check", command=self.run_check
+        )
+        self.submit_button.pack(pady=20)
+
+        # Scrollable text frame for results
+        frame = Frame(root)
+        frame.pack(fill="both", expand=True)
+
+        self.text_widget = Text(
+            frame, wrap="none"
+        )  # Prevent text from wrapping
+        self.text_widget.pack(side=LEFT, fill="both", expand=True)
+        self.text_widget.config(height=15)
+
+        scrollbar = Scrollbar(
+            frame, orient="vertical", command=self.text_widget.yview
+        )
+        scrollbar.pack(side=RIGHT, fill=Y)
+
+        self.text_widget.config(yscrollcommand=scrollbar.set)
+
+    def select_file(self):
+        if file_path := filedialog.askopenfilename(
+            filetypes=[("CSV files", "*.csv")]
+        ):
+            self.customer_file_path = file_path
+            self.label.config(text=f"Selected: {file_path}")
+
+    def on_drop(self, event):
+        self.customer_file_path = event.data.strip("{}")
+        self.label.config(text=f"Dropped: {self.customer_file_path}")
+
+    def run_check(self):
+        if not self.customer_file_path:
+            log.critical("%sNo file selected.%s", Fore.RED, Style.RESET_ALL)
+            return
+
+        verkada_compatibility_list = compile_camera_mp_channels(
+            parse_hardware_compatibility_list(
+                "Verkada Command Connector Compatibility.csv"
+            )
         )
 
+        customer_cameras_list = sanitize_customer_data(
+            parse_customer_list(self.customer_file_path),
+            get_manufacturer_set(verkada_compatibility_list),
+        )
 
-# Execute if being run directly
+        matched_cameras = get_camera_match(
+            customer_cameras_list, verkada_compatibility_list
+        )
+
+        if matched_cameras is not None:
+            # Clear previous text before displaying new results
+            self.text_widget.config(state="normal")
+            self.text_widget.delete(1.0, "end")
+
+            # Display the results in the text widget
+            print_results(
+                matched_cameras,
+                verkada_compatibility_list,
+                self.text_widget,
+                self.root,
+            )
+
+            recommend_connectors(matched_cameras, verkada_compatibility_list)
+        else:
+            log.critical(
+                "%sCould not identify model column.%s",
+                Fore.RED,
+                Style.RESET_ALL,
+            )
+
+
 if __name__ == "__main__":
-    main()
+    root = TkinterDnD.Tk()  # Initialize TkinterDnD for drag-and-drop support
+    app = CameraCompatibilityApp(root)
+    root.mainloop()

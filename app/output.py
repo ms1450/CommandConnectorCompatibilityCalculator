@@ -4,17 +4,24 @@ Co-Author: Ian Young
 Purpose: The contents of this file are to perform output.
 """
 
+import re
+from tkinter import Text, END
 from typing import List
-import colorama
-from colorama import Fore, Style
-from tabulate import tabulate
+
 import pandas as pd
+from tabulate import tabulate
+from tkinterdnd2 import TkinterDnD
 
 from app import CompatibleModel
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
-def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
+def print_results(
+    results: pd.DataFrame,
+    verkada_list: List[CompatibleModel],
+    text_widget: Text,
+    root: TkinterDnD.Tk,
+):
     """Print and save a formatted list of camera data.
 
     Args:
@@ -26,27 +33,27 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
         None
     """
 
-    def colorize_type(value):
-        if value == "unsupported":
-            return f"{Fore.RED}unsupported{Style.RESET_ALL}"
-        if value == "potential":
-            return f"{Fore.YELLOW}potential{Style.RESET_ALL}"
-        if value == "identified":
-            return f"{Fore.CYAN}identified{Style.RESET_ALL}"
-        if value == "exact":
-            return f"{Fore.GREEN}exact{Style.RESET_ALL}"
-        return f"{Fore.LIGHTBLACK_EX}{value}{Style.RESET_ALL}"
-
-    # Initialize Colorama
-    colorama.init(autoreset=True)
+    color_map = {
+        "unsupported": "red",
+        "potential": "yellow",
+        "identified": "cyan",
+        "exact": "green",
+    }
 
     output = []
+
+    # Configure tags for colors
+    text_widget.tag_configure("red", foreground="red")
+    text_widget.tag_configure("yellow", foreground="yellow")
+    text_widget.tag_configure("cyan", foreground="cyan")
+    text_widget.tag_configure("green", foreground="green")
+    text_widget.tag_configure("lightblack", foreground="lightgray")  # Use light gray as a substitute
 
     for _, row in results.iterrows():
         camera_data = {
             "camera_name": row["name"],
             "camera_count": int(row["count"]),
-            "match_type": colorize_type(row["match_type"]),
+            "match_type": row["match_type"],
             "verkada_details": list_verkada_camera_details(
                 row["verkada_model"], verkada_list
             ),
@@ -55,26 +62,14 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
             [
                 camera_data["camera_name"],
                 camera_data["camera_count"],
-                camera_data["match_type"],
+                camera_data['match_type'],
                 *camera_data["verkada_details"],
             ]
         )
 
-    # Create table headers
-    color_headers = [
-        f"{Fore.LIGHTBLACK_EX}Camera Name{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Count{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Match Type{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Model{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Manufacturer{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Min Firmware Version{Style.RESET_ALL}",
-        f"{Fore.LIGHTBLACK_EX}Notes{Style.RESET_ALL}",
-    ]
-
     output.sort(key=lambda x: x[2], reverse=True)
-    print(tabulate(output, headers=color_headers, tablefmt="fancy_grid"))
 
-    plain_headers = [
+    headers = [
         "Camera Name",
         "Count",
         "Match Type",
@@ -87,11 +82,53 @@ def print_results(results: pd.DataFrame, verkada_list: List[CompatibleModel]):
     # Convert to Pandas DataFrame
     df = pd.DataFrame(
         output,
-        columns=plain_headers,
+        columns=headers,
     )
 
     # Strip color codes
     df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
+
+    # Generate the table with tabulate
+    table = tabulate(output, headers=headers, tablefmt="fancy_grid")
+
+    # Insert the table into the text widget
+    text_widget.config(state="normal")  # Enable editing
+    text_widget.delete("1.0", "end")  # Clear previous content
+
+    # Split the table into lines
+    for line in table.splitlines():
+        # Use regex to split the line based on the vertical bar and strip spaces
+        columns = [col.strip() for col in re.split(r'\s*[│]\s*', line) if col.strip()]
+
+        # Debugging output to check split results
+        print(f"Processing line: {line}")
+        print(f"Columns: {columns}")
+
+        # Skip lines that are entirely separators or headers
+        if not columns or re.match(r'^[╒╞╘╤╧╥╨╔╗╚╝╠╣║╬─┼┤┬┴┌┐└┘┏┓┗┛]*$', line):
+            continue
+
+        match_type = columns[2] if len(columns) > 2 else ""
+
+        # Determine the color tag
+        color_tag = color_map.get(match_type, "lightblack")  # Default to lightblack if not found
+
+        # Insert the line into the text widget with the appropriate color tag
+        text_widget.insert("end", line + "\n", color_tag)
+
+
+    # text_widget.insert("end", table)  # Insert new content
+    text_widget.config(state="disabled")  # Make it read-only
+
+    # Set horizontal scrolling
+    text_widget.config(wrap="none")
+
+    # Update window width based on the table width
+    text_width = (
+        max(len(line) for line in table.split("\n")) * 7
+    )  # Approximate character width
+    window_width = text_width + 20  # Add extra padding of 10 on each side
+    root.geometry(f"{window_width}x400")  # Set a fixed height for the window
 
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
