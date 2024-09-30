@@ -4,6 +4,11 @@ Co-Author: Mehul Sen
 Purpose: Create a GUI through which the application may be ran and managed.
 """
 
+# pylint: disable=ungrouped-imports
+
+from os.path import basename
+from subprocess import check_call
+from sys import executable
 from tkinter import (
     LEFT,
     RIGHT,
@@ -16,9 +21,17 @@ from tkinter import (
     filedialog,
 )
 
-from colorama import Fore, Style, init
-from tkinterdnd2 import DND_FILES, TkinterDnD
-from ttkthemes import ThemedStyle
+try:
+    from colorama import Fore, Style, init
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    from ttkthemes import ThemedStyle
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    from colorama import Fore, Style, init
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    from ttkthemes import ThemedStyle
 
 from app import log
 from app.calculations import compile_camera_mp_channels, get_camera_match
@@ -29,6 +42,7 @@ from app.file_handling import (
 from app.formatting import get_manufacturer_set, sanitize_customer_data
 from app.output import print_results
 from app.recommend import recommend_connectors
+
 
 # Initialize colorized output
 init(autoreset=True)
@@ -75,18 +89,24 @@ class CameraCompatibilityApp:
         self.label = Label(window, text="Select or Drop Customer CSV File")
         self.label.pack(pady=20)
 
+        # Create a frame for the buttons
+        button_frame = Frame(window)
+        button_frame.pack(pady=10)
+
         self.button = Button(
-            window, text="Select File", command=self.select_file
+            button_frame, text="Select File", command=self.select_file
         )
-        self.button.pack(pady=10)
+        self.button.pack(pady=5)
 
         window.drop_target_register(DND_FILES)
         window.dnd_bind("<<Drop>>", self.on_drop)
 
         self.submit_button = Button(
-            window, text="Run Compatibility Check", command=self.run_check
+            button_frame,
+            text="Run Compatibility Check",
+            command=self.run_check,
         )
-        self.submit_button.pack(pady=20)
+        self.submit_button.pack_forget()  # Hide the button
 
         # Scrollable text frame for results
         frame = Frame(window)
@@ -96,7 +116,7 @@ class CameraCompatibilityApp:
             frame, wrap="none"
         )  # Prevent text from wrapping
         self.text_widget.pack(side=LEFT, fill="both", expand=True)
-        self.text_widget.config(height=15)
+        self.text_widget.config(height=15, state="disabled")
 
         scrollbar = Scrollbar(
             frame, orient="vertical", command=self.text_widget.yview
@@ -139,7 +159,10 @@ class CameraCompatibilityApp:
             None
         """
         self.customer_file_path = event.data.strip("{}")
-        self.label.config(text=f"Dropped: {self.customer_file_path}")
+        self.label.config(
+            text=f"Selected: {basename(self.customer_file_path)}"
+        )
+        self.submit_button.pack()
 
     def run_check(self):
         """
