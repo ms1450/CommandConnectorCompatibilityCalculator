@@ -95,27 +95,29 @@ def print_results(
     text_widget.config(state="normal")  # Enable editing
     text_widget.delete("1.0", "end")  # Clear previous content
 
-    # Split the table into lines
+    # Assuming color_map and text_widget are already defined
     for line in table.splitlines():
-        # Use regex to split the line based on the vertical bar and strip spaces
-        columns = [col.strip() for col in re.split(r'\s*[│]\s*', line) if col.strip()]
-
-        # Debugging output to check split results
-        print(f"Processing line: {line}")
-        print(f"Columns: {columns}")
-
         # Skip lines that are entirely separators or headers
-        if not columns or re.match(r'^[╒╞╘╤╧╥╨╔╗╚╝╠╣║╬─┼┤┬┴┌┐└┘┏┓┗┛]*$', line):
+        if not line.strip() or re.match(r'^[╒╞╘╤╧╥╨╔╗╚╝╠╣║╬─┼┤┬┴┌┐└┘┏┓┗┛]*$', line):
+            text_widget.insert("end", line + "\n")  # Keep the formatting
             continue
 
-        match_type = columns[2] if len(columns) > 2 else ""
+        print(f"Processing line: {line}")
+        words = line.split(" ")
 
-        # Determine the color tag
-        color_tag = color_map.get(match_type, "lightblack")  # Default to lightblack if not found
+        # Insert colorized words while preserving formatting
+        for word in words:
+            # Strip any surrounding whitespace for matching
+            stripped_word = word.strip()
+            match_type = stripped_word if stripped_word in color_map else ""
 
-        # Insert the line into the text widget with the appropriate color tag
-        text_widget.insert("end", line + "\n", color_tag)
+            # Determine the color tag
+            color_tag = color_map.get(match_type, "lightblack")  # Default to lightblack if not found
 
+            # Insert the word into the text widget with the appropriate color tag
+            text_widget.insert("end", stripped_word + " ", color_tag)  # Add a space after each word
+
+        text_widget.insert("end", "\n")  # Insert a newline after each line
 
     # text_widget.insert("end", table)  # Insert new content
     text_widget.config(state="disabled")  # Make it read-only
