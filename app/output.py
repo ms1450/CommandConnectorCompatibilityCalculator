@@ -24,7 +24,7 @@ except ImportError as e:
     from tabulate import tabulate
     from tkinterdnd2 import TkinterDnD
 
-from app import CompatibleModel
+from app import CompatibleModel, logging_decorator
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
 from app.memory_management import MemoryStorage
 
@@ -113,6 +113,7 @@ def print_results(
     #     )
 
 
+@logging_decorator
 def gui_creation(table, root: TkinterDnD.Tk, text_widget: Text):
     """
     Creates a GUI representation of a table widget with colored entries.

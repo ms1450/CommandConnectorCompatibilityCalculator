@@ -36,7 +36,7 @@ except ImportError as e:
     from tabulate import tabulate
 
 
-from app import CompatibleModel, Connector
+from app import CompatibleModel, Connector, logging_decorator
 
 NLTK_DATA_PATH = "./misc/nltk_data"
 
@@ -73,6 +73,7 @@ def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     return {""}
 
 
+@logging_decorator
 def find_verkada_camera(
     verkada_model: str, verkada_camera_list: List[CompatibleModel]
 ) -> Optional[CompatibleModel]:
@@ -134,6 +135,7 @@ def list_verkada_camera_details(
     )
 
 
+@logging_decorator
 def sanitize_customer_data(
     customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:
@@ -281,6 +283,7 @@ def tabulate_data(data: List[List[str]]) -> None:
     print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
 
 
+@logging_decorator
 def print_connector_recommendation(recommendations: List[Connector]):
     """
     Print a formatted table of device recommendations and their counts.

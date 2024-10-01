@@ -31,12 +31,19 @@ except ImportError as e:
 
 # Local/application-specific imports
 from app.formatting import get_camera_set, find_verkada_camera
-from app import log, CompatibleModel, Connector
+from app import (
+    log,
+    logging_decorator,
+    time_function,
+    CompatibleModel,
+    Connector,
+)
 
 # Initialize colorama
 colorama.init(autoreset=True)
 
 
+@logging_decorator
 def identify_model_column_name(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> Optional[Union[int, str]]:
@@ -108,6 +115,7 @@ def identify_model_column_name(
     return None
 
 
+@logging_decorator
 def identify_count_column(customer_list: pd.DataFrame) -> Optional[int]:
     """Identify the column with the number of cameras in the customer list
 
@@ -247,10 +255,11 @@ def get_camera_match(
     return result
 
 
+@time_function
 def compile_camera_mp_channels(
     verkada_camera_list: List[CompatibleModel],
 ) -> List[CompatibleModel]:
-    """Compile camera models using multiprocessing.
+    """Compile camera models.
 
     Args:
         verkada_camera_list (List[CompatibleModel]): The list of known cameras.
@@ -514,6 +523,7 @@ def count_mp(
     return [low_count, high_count]
 
 
+@logging_decorator
 def calculate_excess_channels(channels: int, connectors: List[Connector]):
     """
     Calculate the excess number of channels based on the provided

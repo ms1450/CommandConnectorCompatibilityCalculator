@@ -21,7 +21,13 @@ except ImportError as e:
     import pandas as pd
     from colorama import init, Fore, Style
 
-from app import CompatibleModel, Connector, log
+from app import (
+    CompatibleModel,
+    Connector,
+    log,
+    time_function,
+    logging_decorator,
+)
 
 # Local/application-specific imports
 from app.calculations import (
@@ -85,6 +91,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 )
 
 
+@time_function
 def get_connectors(
     channels: int,
     storage: float,
@@ -222,6 +229,7 @@ def recommend_connector(
     # print(", ".join(get_connectors(total_required_channels, storage)))
 
 
+@logging_decorator
 def recommend_connectors(
     camera_dataframe: pd.DataFrame,
     verkada_camera_list: List[CompatibleModel],

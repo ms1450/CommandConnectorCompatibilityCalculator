@@ -26,6 +26,10 @@ except ImportError as e:
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 
+from app import logging_decorator, time_function
+
+
+@time_function
 def download_hcl(url: str) -> Optional[str]:
     """
     Download HCL file from the given URL.
@@ -53,6 +57,7 @@ def download_hcl(url: str) -> Optional[str]:
         return download_csv(driver, url, download_dir)
 
 
+@time_function
 def download_csv(driver, url, download_dir):
     """Downloads a CSV file from a specified URL using a web driver.
 
@@ -96,6 +101,7 @@ def download_csv(driver, url, download_dir):
     return None
 
 
+@logging_decorator
 def update_specs(hcl_file: str, specs_file: str) -> None:
     """
     Update specs by comparing HCL and specs files.

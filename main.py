@@ -34,7 +34,7 @@ except ImportError as e:
     from tkinterdnd2 import DND_FILES, TkinterDnD
     from ttkthemes import ThemedStyle
 
-from app import log
+from app import log, time_function
 from app.calculations import compile_camera_mp_channels, get_camera_match
 from app.memory_management import MemoryStorage
 from app.file_handling import (
@@ -167,6 +167,7 @@ class CameraCompatibilityApp:
         )
         self.submit_button.pack()
 
+    @time_function
     def run_check(self):
         """
         Executes the compatibility check using the selected file.
@@ -214,9 +215,12 @@ class CameraCompatibilityApp:
                 verkada_compatibility_list,
                 self.text_widget,
                 self.root,
+                self.memory,
             )
 
-            recommend_connectors(matched_cameras, verkada_compatibility_list)
+            recommend_connectors(
+                matched_cameras, verkada_compatibility_list, self.memory
+            )
         else:
             log.critical(
                 "%sCould not identify model column.%s",
