@@ -5,7 +5,9 @@ Purpose: The contents of this file are to perform file handling.
 """
 
 from typing import List
+
 import pandas as pd
+
 from app import CompatibleModel
 
 

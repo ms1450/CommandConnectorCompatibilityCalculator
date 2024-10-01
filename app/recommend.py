@@ -3,13 +3,23 @@ Author: Ian Young
 Purpose: Recommend a Command Connector based on a given site of criteria.
 """
 
+# pylint: disable=ungrouped-imports
+
 # Standard library imports
+from subprocess import check_call
+from sys import executable
 from typing import List, Optional
 
 # Third-party library imports
-import colorama
-import pandas as pd
-from colorama import Fore, Style
+try:
+    import pandas as pd
+    from colorama import init, Fore, Style
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import pandas as pd
+    from colorama import init, Fore, Style
 
 from app import CompatibleModel, Connector, log
 
@@ -22,7 +32,7 @@ from app.calculations import (
 )
 from app.memory_management import MemoryStorage
 
-colorama.init(autoreset=True)  # Initialize colorized output
+init(autoreset=True)  # Initialize colorized output
 
 RETENTION = 30  # Required storage in days
 

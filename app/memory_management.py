@@ -4,9 +4,19 @@ Purpose: Load commonly used variables into a class to avoid unnecessary
 compute in the application.
 """
 
+# pylint: disable=ungrouped-imports
+
+from subprocess import check_call
+from sys import executable
 from tkinter import Text
 
-from tkinterdnd2 import TkinterDnD
+try:
+    from tkinterdnd2 import TkinterDnD
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    from tkinterdnd2 import TkinterDnD
 
 from app.output import gui_creation
 from app.formatting import print_connector_recommendation

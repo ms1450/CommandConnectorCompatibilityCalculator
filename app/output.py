@@ -4,13 +4,25 @@ Co-Author: Ian Young
 Purpose: The contents of this file are to perform output.
 """
 
+# pylint: disable=ungrouped-imports
+
 import re
+from subprocess import check_call
+from sys import executable
 from tkinter import Text
 from typing import List
 
-import pandas as pd
-from tabulate import tabulate
-from tkinterdnd2 import TkinterDnD
+try:
+    import pandas as pd
+    from tabulate import tabulate
+    from tkinterdnd2 import TkinterDnD
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import pandas as pd
+    from tabulate import tabulate
+    from tkinterdnd2 import TkinterDnD
 
 from app import CompatibleModel
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
@@ -165,9 +177,7 @@ def gui_creation(table, root: TkinterDnD.Tk, text_widget: Text):
             )  # Default to lightblack if not found
 
             # Insert the word into the text widget with the appropriate color tag
-            text_widget.insert(
-                "end", stripped_word + " ", color_tag
-            )  # Add a space after each word
+            text_widget.insert("end", f"{stripped_word} ", color_tag)
 
         text_widget.insert("end", "\n")  # Insert a newline after each line
 

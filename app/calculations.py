@@ -6,15 +6,28 @@ Purpose: The contents of this file are to perform various calculations
     a deal.
 """
 
+# pylint: disable=ungrouped-imports
+
 # Standard library imports
 import re
+from subprocess import check_call
+from sys import executable
 from typing import Dict, List, Optional, Union
 
 # Third-party library imports
-import colorama
-import numpy as np
-import pandas as pd
-from thefuzz import fuzz, process
+try:
+    import colorama
+    import numpy as np
+    import pandas as pd
+    from thefuzz import fuzz, process
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import colorama
+    import numpy as np
+    import pandas as pd
+    from thefuzz import fuzz, process
 
 # Local/application-specific imports
 from app.formatting import get_camera_set, find_verkada_camera

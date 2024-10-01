@@ -4,19 +4,37 @@ Purpose: The contents of this file are to perform formatting for the
     customer camera file.
 """
 
+# pylint: disable=ungrouped-imports
+
 import os
 import re
 from collections import defaultdict
+from subprocess import check_call
+from sys import executable
 from typing import Dict, List, Optional, Set
 
-import pandas as pd
-import colorama
-from colorama import Fore, Style
-from nltk.corpus import words
-from nltk.data import find
-from nltk.downloader import download
-from pandas import Series
-from tabulate import tabulate
+try:
+    import pandas as pd
+    import colorama
+    from colorama import Fore, Style
+    from nltk.corpus import words
+    from nltk.data import find
+    from nltk.downloader import download
+    from pandas import Series
+    from tabulate import tabulate
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import pandas as pd
+    import colorama
+    from colorama import Fore, Style
+    from nltk.corpus import words
+    from nltk.data import find
+    from nltk.downloader import download
+    from pandas import Series
+    from tabulate import tabulate
+
 
 from app import CompatibleModel, Connector
 
