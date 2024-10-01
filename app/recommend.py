@@ -20,7 +20,7 @@ from app.calculations import (
     calculate_low_mp_storage,
     count_mp,
 )
-from app.formatting import print_connector_recommendation
+from app.memory_management import MemoryStorage
 
 colorama.init(autoreset=True)  # Initialize colorized output
 
@@ -167,7 +167,12 @@ def get_connectors(
     return recommendation  # Return the list of selected connectors
 
 
-def recommend_connector(low_channels: int, high_channels: int, storage: float):
+def recommend_connector(
+    low_channels: int,
+    high_channels: int,
+    storage: float,
+    memory: MemoryStorage,
+):
     """Formats data and calls recursive function.
 
     Recommend a connector based on the specified low and high channel
@@ -178,6 +183,7 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
         low_channels (int): The number of low channels required.
         high_channels (int): The number of high channels required.
         storage (float): The amount of storage available.
+        memory (MemoryStorage): Class to store frequently accessed variables.
 
     Returns:
         None: This function does not return a value but calls another
@@ -191,19 +197,26 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
     total_required_channels = low_channels + high_channels * 2
     log.info("Total channels needed: %i", total_required_channels)
     recommendations = get_connectors(total_required_channels, storage)
-    print_connector_recommendation(recommendations)
     excess_channels = calculate_excess_channels(
         total_required_channels, recommendations
     )
-    print(
-        f"{Fore.LIGHTMAGENTA_EX}Excess channels: {excess_channels}{Style.RESET_ALL}"
+    memory.set_recommendations(recommendations)
+    memory.set_excess_channels(excess_channels)
+    log.debug(recommendations)
+    log.debug(
+        "%sExcess channels: %d%s",
+        Fore.LIGHTMAGENTA_EX,
+        excess_channels,
+        Style.RESET_ALL,
     )
     # print(", ".join(get_connectors(total_required_channels, storage)))
 
 
 def recommend_connectors(
-    camera_dataframe: pd.DataFrame, verkada_camera_list: List[CompatibleModel]
-):
+    camera_dataframe: pd.DataFrame,
+    verkada_camera_list: List[CompatibleModel],
+    memory: MemoryStorage,
+) -> None:
     """Driver function to gather all required recursive compute variables.
 
     Generate connector recommendations based on customer camera data and
@@ -212,8 +225,9 @@ def recommend_connectors(
     channels.
 
     Args:
-        camera_dataframe (pd.DataFrame): A dataframe containing customer cameras
-        verkada_camera_list (List[CompatibleModel]): A list of verkada cameras
+        camera_dataframe (pd.DataFrame): A dataframe containing customer cameras.
+        verkada_camera_list (List[CompatibleModel]): A list of verkada cameras.
+        memory (MemoryStorage): Class to store frequently accessed variables.
 
     Returns:
         None: This function does not return a value but triggers the
@@ -222,10 +236,14 @@ def recommend_connectors(
     Examples:
         >>> recommend_connectors(camera_dataframe)
     """
-    low_mp_count, high_mp_count = count_mp(
-        camera_dataframe, verkada_camera_list
-    )
-    low_storage = calculate_low_mp_storage(low_mp_count, RETENTION)
-    high_storage = calculate_4k_storage(high_mp_count, RETENTION)
-    total_storage = low_storage + high_storage
-    recommend_connector(low_mp_count, high_mp_count, total_storage)
+
+    if not memory.has_recommendations() and not memory.has_excess_channels():
+        low_mp_count, high_mp_count = count_mp(
+            camera_dataframe, verkada_camera_list
+        )
+        low_storage = calculate_low_mp_storage(low_mp_count, RETENTION)
+        high_storage = calculate_4k_storage(high_mp_count, RETENTION)
+        total_storage = low_storage + high_storage
+        recommend_connector(low_mp_count, high_mp_count, total_storage, memory)
+
+    memory.print_recommendations()  #! Placeholder to check functionality

@@ -14,6 +14,7 @@ from tkinterdnd2 import TkinterDnD
 
 from app import CompatibleModel
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
+from app.memory_management import MemoryStorage
 
 
 def print_results(
@@ -21,6 +22,7 @@ def print_results(
     verkada_list: List[CompatibleModel],
     text_widget: Text,
     root: TkinterDnD.Tk,
+    memory: MemoryStorage,
 ):
     """Print and save a formatted list of camera data.
 
@@ -31,56 +33,58 @@ def print_results(
         text_widget (Text): The text widget where the table will be
             displayed.
         root (TkinterDnD.Tk): The root window of the application.
+        memory (MemoryStorage): Class to store frequently accessed variables.
 
     Returns:
         None
     """
+    if not memory.has_text_widget:
+        output = []
 
-    output = []
+        for _, row in results.iterrows():
+            camera_data = {
+                "camera_name": row["name"],
+                "camera_count": int(row["count"]),
+                "match_type": row["match_type"],
+                "verkada_details": list_verkada_camera_details(
+                    row["verkada_model"], verkada_list
+                ),
+            }
+            output.append(
+                [
+                    camera_data["camera_name"],
+                    camera_data["camera_count"],
+                    camera_data["match_type"],
+                    *camera_data["verkada_details"],
+                ]
+            )
 
-    for _, row in results.iterrows():
-        camera_data = {
-            "camera_name": row["name"],
-            "camera_count": int(row["count"]),
-            "match_type": row["match_type"],
-            "verkada_details": list_verkada_camera_details(
-                row["verkada_model"], verkada_list
-            ),
-        }
-        output.append(
-            [
-                camera_data["camera_name"],
-                camera_data["camera_count"],
-                camera_data["match_type"],
-                *camera_data["verkada_details"],
-            ]
+        output.sort(key=lambda x: x[2], reverse=False)
+
+        headers = [
+            "Camera Name",
+            "Count",
+            "Match Type",
+            "Model",
+            "Manufacturer",
+            "Min Firmware Version",
+            "Notes",
+        ]
+
+        # Convert to Pandas DataFrame
+        df = pd.DataFrame(
+            output,
+            columns=headers,
         )
 
-    output.sort(key=lambda x: x[2], reverse=False)
+        # Strip color codes
+        df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
 
-    headers = [
-        "Camera Name",
-        "Count",
-        "Match Type",
-        "Model",
-        "Manufacturer",
-        "Min Firmware Version",
-        "Notes",
-    ]
+        # Generate the table with tabulate
+        table = tabulate(output, headers=headers, tablefmt="fancy_grid")
+        memory.set_compatible_cameras(table)
 
-    # Convert to Pandas DataFrame
-    df = pd.DataFrame(
-        output,
-        columns=headers,
-    )
-
-    # Strip color codes
-    df["Match Type"] = df["Match Type"].apply(strip_ansi_codes)
-
-    # Generate the table with tabulate
-    table = tabulate(output, headers=headers, tablefmt="fancy_grid")
-
-    gui_creation(table, root, text_widget)
+    gui_creation(memory.compatible, root, text_widget)  #! Placeholder
 
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())

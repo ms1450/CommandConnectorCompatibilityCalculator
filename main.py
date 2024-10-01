@@ -4,6 +4,7 @@ Co-Author: Mehul Sen
 Purpose: Create a GUI through which the application may be ran and managed.
 """
 
+# [ ] TODO: Add values to memory storage
 # pylint: disable=ungrouped-imports
 
 from os.path import basename
@@ -35,6 +36,7 @@ except ImportError as e:
 
 from app import log
 from app.calculations import compile_camera_mp_channels, get_camera_match
+from app.memory_management import MemoryStorage
 from app.file_handling import (
     parse_customer_list,
     parse_hardware_compatibility_list,
@@ -80,6 +82,7 @@ class CameraCompatibilityApp:
             None
         """
         self.root = window
+        self.memory = MemoryStorage()  # Unified place to store results
         self.root.title("Camera Compatibility Checker")
         self.customer_file_path = None
 
