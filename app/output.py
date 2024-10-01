@@ -24,9 +24,8 @@ except ImportError as e:
     from tabulate import tabulate
     from tkinterdnd2 import TkinterDnD
 
-from app import CompatibleModel, logging_decorator
+from app import CompatibleModel, log, logging_decorator
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
-from app.memory_management import MemoryStorage
 
 
 def print_results(
@@ -34,7 +33,7 @@ def print_results(
     verkada_list: List[CompatibleModel],
     text_widget: Text,
     root: TkinterDnD.Tk,
-    memory: MemoryStorage,
+    memory,
 ):
     """Print and save a formatted list of camera data.
 
@@ -50,7 +49,8 @@ def print_results(
     Returns:
         None
     """
-    if not memory.has_text_widget:
+    log.debug("Run calculations: %s", not memory.has_text_widget())
+    if not memory.has_text_widget():
         output = []
 
         for _, row in results.iterrows():
@@ -95,6 +95,7 @@ def print_results(
         # Generate the table with tabulate
         table = tabulate(output, headers=headers, tablefmt="fancy_grid")
         memory.set_compatible_cameras(table)
+        log.info("Compatible cameras set in memory")
 
     gui_creation(memory.compatible, root, text_widget)  #! Placeholder
 
