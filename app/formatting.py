@@ -36,7 +36,7 @@ except ImportError as e:
     from tabulate import tabulate
 
 
-from app import CompatibleModel, Connector, logging_decorator
+from app import CompatibleModel, Connector, logging_decorator, time_function
 
 NLTK_DATA_PATH = "./misc/nltk_data"
 
@@ -135,7 +135,7 @@ def list_verkada_camera_details(
     )
 
 
-@logging_decorator
+@time_function
 def sanitize_customer_data(
     customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:

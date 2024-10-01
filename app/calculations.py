@@ -43,7 +43,7 @@ from app import (
 colorama.init(autoreset=True)
 
 
-@logging_decorator
+@time_function
 def identify_model_column_name(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> Optional[Union[int, str]]:

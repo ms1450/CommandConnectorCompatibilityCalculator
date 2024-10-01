@@ -254,7 +254,7 @@ def recommend_connectors(
     Examples:
         >>> recommend_connectors(camera_dataframe)
     """
-    log.debug("Run calculations: %s", memory.has_recommendations())
+    log.debug("Run calculations: %s", not memory.has_recommendations())
     if not memory.has_recommendations() and not memory.has_excess_channels():
         low_mp_count, high_mp_count = count_mp(
             camera_dataframe, verkada_camera_list

@@ -78,10 +78,10 @@ def logging_decorator(func):
         Returns:
             None
         """
-        log.debug("Running %s with %s arguments", func.__name__, args)
+        log.debug("Running %s with argument(s): %.15s", func.__name__, args)
         result = func(*args, **kwargs)
         log.debug(
-            "%s finished its task with return values of: %s",
+            "%s finished its task with return value(s) of: %.15s",
             func.__name__,
             str(result),
         )
