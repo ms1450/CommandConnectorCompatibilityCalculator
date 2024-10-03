@@ -5,6 +5,11 @@ Purpose: Create a GUI through which the application may be ran and managed.
 """
 
 # [ ] TODO: Add values to memory storage
+# [ ] TODO: Re-run calculations when retention is changed
+# [ ] TODO: Add input to set the retention period (spin wheel)
+# [ ] TODO: Set dynamic horizontal scroll bars
+# [ ] TODO: Show excess channels
+
 # pylint: disable=ungrouped-imports
 
 from os.path import basename
@@ -144,7 +149,8 @@ class CameraCompatibilityApp:
             filetypes=[("CSV files", "*.csv")]
         ):
             self.customer_file_path = file_path
-            self.label.config(text=f"Selected: {file_path}")
+            self.label.config(text=f"Selected: {basename(self.customer_file_path)}")
+            self.submit_button.pack()
 
     def on_drop(self, event):
         """
