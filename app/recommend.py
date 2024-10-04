@@ -40,8 +40,6 @@ from app.memory_management import MemoryStorage
 
 init(autoreset=True)  # Initialize colorized output
 
-RETENTION = 30  # Required storage in days
-
 
 # Ensure the dictionaries match the `Connector` TypedDict structure
 COMMAND_CONNECTORS: List[Connector] = [
@@ -231,6 +229,7 @@ def recommend_connector(
 
 @logging_decorator
 def recommend_connectors(
+    retention: int,
     camera_dataframe: pd.DataFrame,
     verkada_camera_list: List[CompatibleModel],
     memory: MemoryStorage,
@@ -243,6 +242,7 @@ def recommend_connectors(
     channels.
 
     Args:
+        retention (int): The days of required retention for the command connector
         camera_dataframe (pd.DataFrame): A dataframe containing customer cameras.
         verkada_camera_list (List[CompatibleModel]): A list of verkada cameras.
         memory (MemoryStorage): Class to store frequently accessed variables.
@@ -259,9 +259,7 @@ def recommend_connectors(
         low_mp_count, high_mp_count = count_mp(
             camera_dataframe, verkada_camera_list
         )
-        low_storage = calculate_low_mp_storage(low_mp_count, RETENTION)
-        high_storage = calculate_4k_storage(high_mp_count, RETENTION)
+        low_storage = calculate_low_mp_storage(low_mp_count, retention)
+        high_storage = calculate_4k_storage(high_mp_count, retention)
         total_storage = low_storage + high_storage
         recommend_connector(low_mp_count, high_mp_count, total_storage, memory)
-
-    memory.print_recommendations()  #! Placeholder to check functionality

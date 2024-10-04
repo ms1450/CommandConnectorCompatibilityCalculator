@@ -4,11 +4,15 @@ Co-Author: Mehul Sen
 Purpose: Create a GUI through which the application may be ran and managed.
 """
 
-# [ ] TODO: Add values to memory storage
-# [ ] TODO: Re-run calculations when retention is changed
-# [ ] TODO: Add input to set the retention period (spin wheel)
+# [x] TODO: Add values to memory storage
+# [ ] TODO: Add bool to check if file has changed
+    # [ ] TODO: Re-run calculations if the file has changed
+# [x] TODO: Add input to set the retention period (spin wheel)
+    # [ ] TODO: Re-run calculations when retention is changed
 # [ ] TODO: Set dynamic horizontal scroll bars
 # [ ] TODO: Show excess channels
+# [ ] TODO: Store results in a database to prevent the need for rerunning
+
 
 # pylint: disable=ungrouped-imports
 
@@ -25,6 +29,8 @@ from tkinter import (
     Text,
     Y,
     filedialog,
+    Spinbox,
+    IntVar,
 )
 
 try:
@@ -53,7 +59,6 @@ from app.recommend import recommend_connectors
 
 # Initialize colorized output
 init(autoreset=True)
-RETENTION = 30
 
 
 class CameraCompatibilityApp:
@@ -116,6 +121,12 @@ class CameraCompatibilityApp:
         )
         self.submit_button.pack_forget()  # Hide the button
 
+        self.retention = IntVar()
+        retention_entry = Spinbox(
+            window, from_=30, to=90, textvariable=self.retention, width=2
+        )
+        retention_entry.pack()
+
         # Scrollable text frame for results
         frame = Frame(window)
         frame.pack(fill="both", expand=True)
@@ -149,7 +160,9 @@ class CameraCompatibilityApp:
             filetypes=[("CSV files", "*.csv")]
         ):
             self.customer_file_path = file_path
-            self.label.config(text=f"Selected: {basename(self.customer_file_path)}")
+            self.label.config(
+                text=f"Selected: {basename(self.customer_file_path)}"
+            )
             self.submit_button.pack()
 
     def on_drop(self, event):
@@ -225,14 +238,27 @@ class CameraCompatibilityApp:
             )
 
             recommend_connectors(
-                matched_cameras, verkada_compatibility_list, self.memory
+                self.retention.get(),
+                matched_cameras,
+                verkada_compatibility_list,
+                self.memory,
             )
+            self.show_compatible()
         else:
             log.critical(
                 "%sCould not identify model column.%s",
                 Fore.RED,
                 Style.RESET_ALL,
             )
+
+    def show_excess(self):
+        """Show the excess amount of channels."""
+        self.text_widget.delete("1.0", "end")  # Clear
+        self.text_widget.insert("end", self.memory.recommendations)
+
+    def show_compatible(self):
+        """Prints the original tabulated data"""
+        self.memory.print_recommendations()
 
 
 if __name__ == "__main__":
