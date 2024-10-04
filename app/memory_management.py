@@ -69,11 +69,7 @@ class MemoryStorage:
         Returns:
             None
         """
-        if (
-            not hasattr(self, "recommendations")
-            or self.recommendations is None
-        ):
-            self.recommendations = recommendations
+        self.recommendations = recommendations
 
     def set_excess_channels(self, excess_channels):
         """Sets the value of excess channels for memory management.
@@ -89,11 +85,7 @@ class MemoryStorage:
         Returns:
             None
         """
-        if (
-            not hasattr(self, "excess_channels")
-            or self.excess_channels is None
-        ):
-            self.excess_channels = excess_channels
+        self.excess_channels = excess_channels
 
     def set_compatible_cameras(self, compatible):
         """Sets the value of compatible cameras for memory management.
@@ -109,8 +101,7 @@ class MemoryStorage:
         Returns:
             None
         """
-        if not hasattr(self, "compatible") or self.compatible is None:
-            self.compatible = compatible
+        self.compatible = compatible
 
     def has_recommendations(self):
         """Checks if recommendations are available.

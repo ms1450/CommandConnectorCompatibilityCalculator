@@ -29,6 +29,7 @@ from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
 def print_results(
+    change: bool,
     results: pd.DataFrame,
     verkada_list: List[CompatibleModel],
     text_widget: Text,
@@ -38,6 +39,8 @@ def print_results(
     """Print and save a formatted list of camera data.
 
     Args:
+        change (bool): Boolean value that indicates whether a change in
+            the input has occurred and calculations need to be ran again.
         results (pd.DataFrame): Dataframe containing results of each camera.
         verkada_list (List[CompatibleModel]): List of CompatibleModel objects
         connectors (List[str]): List of Connectors recommended
@@ -49,8 +52,8 @@ def print_results(
     Returns:
         None
     """
-    log.debug("Run calculations: %s", not memory.has_text_widget())
-    if not memory.has_text_widget():
+    log.debug("Run calculations: %s", (not memory.has_text_widget() or change))
+    if not memory.has_text_widget() or change:
         output = []
 
         for _, row in results.iterrows():

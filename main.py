@@ -5,10 +5,10 @@ Purpose: Create a GUI through which the application may be ran and managed.
 """
 
 # [x] TODO: Add values to memory storage
-# [ ] TODO: Add bool to check if file has changed
-    # [ ] TODO: Re-run calculations if the file has changed
+# [x] TODO: Add bool to check if file has changed
+# [x] TODO: Re-run calculations if the file has changed
 # [x] TODO: Add input to set the retention period (spin wheel)
-    # [ ] TODO: Re-run calculations when retention is changed
+# [x] TODO: Re-run calculations when retention is changed
 # [ ] TODO: Set dynamic horizontal scroll bars
 # [ ] TODO: Show excess channels
 # [ ] TODO: Store results in a database to prevent the need for rerunning
@@ -22,12 +22,12 @@ from sys import executable
 from tkinter import (
     LEFT,
     RIGHT,
+    Y,
     Button,
     Frame,
     Label,
     Scrollbar,
     Text,
-    Y,
     filedialog,
     Spinbox,
     IntVar,
@@ -91,9 +91,10 @@ class CameraCompatibilityApp:
         Returns:
             None
         """
-        self.root = window
+        self.root = window  # Create GUI window
         self.memory = MemoryStorage()  # Unified place to store results
-        self.root.title("Camera Compatibility Checker")
+        self.change = True  # Detect if there have been any changes
+        self.root.title("Camera Compatibility Checker")  # Title of window
         self.customer_file_path = None
 
         style = ThemedStyle(window)
@@ -123,7 +124,12 @@ class CameraCompatibilityApp:
 
         self.retention = IntVar()
         retention_entry = Spinbox(
-            window, from_=30, to=90, textvariable=self.retention, width=2
+            window,
+            from_=30,
+            to=90,
+            textvariable=self.retention,
+            width=2,
+            command=self.change_detected,
         )
         retention_entry.pack()
 
@@ -132,8 +138,7 @@ class CameraCompatibilityApp:
         frame.pack(fill="both", expand=True)
 
         self.text_widget = Text(
-            frame, wrap="none"
-        )  # Prevent text from wrapping
+            frame, wrap="none", takefocus=False)  # Prevent text from wrapping
         self.text_widget.pack(side=LEFT, fill="both", expand=True)
         self.text_widget.config(height=15, state="disabled")
 
@@ -156,6 +161,7 @@ class CameraCompatibilityApp:
         Returns:
             None
         """
+        self.change_detected()
         if file_path := filedialog.askopenfilename(
             filetypes=[("CSV files", "*.csv")]
         ):
@@ -180,6 +186,7 @@ class CameraCompatibilityApp:
         Returns:
             None
         """
+        self.change_detected()
         self.customer_file_path = event.data.strip("{}")
         self.label.config(
             text=f"Selected: {basename(self.customer_file_path)}"
@@ -230,6 +237,7 @@ class CameraCompatibilityApp:
 
             # Display the results in the text widget
             print_results(
+                self.change,
                 matched_cameras,
                 verkada_compatibility_list,
                 self.text_widget,
@@ -238,6 +246,7 @@ class CameraCompatibilityApp:
             )
 
             recommend_connectors(
+                self.change,
                 self.retention.get(),
                 matched_cameras,
                 verkada_compatibility_list,
@@ -250,6 +259,19 @@ class CameraCompatibilityApp:
                 Fore.RED,
                 Style.RESET_ALL,
             )
+        self.toggle_change()  # Change back to false
+
+    def toggle_change(self):
+        """Toggles the value of the change boolean."""
+        log.debug(
+            "Setting self.change from %s to %s.", self.change, not self.change
+        )
+        self.change = not self.change
+
+    def change_detected(self):
+        """Mark that a change has been detected."""
+        log.debug("Setting retention to True")
+        self.change = True
 
     def show_excess(self):
         """Show the excess amount of channels."""

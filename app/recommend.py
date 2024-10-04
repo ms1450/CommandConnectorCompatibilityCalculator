@@ -229,6 +229,7 @@ def recommend_connector(
 
 @logging_decorator
 def recommend_connectors(
+    change: bool,
     retention: int,
     camera_dataframe: pd.DataFrame,
     verkada_camera_list: List[CompatibleModel],
@@ -242,10 +243,17 @@ def recommend_connectors(
     channels.
 
     Args:
-        retention (int): The days of required retention for the command connector
-        camera_dataframe (pd.DataFrame): A dataframe containing customer cameras.
-        verkada_camera_list (List[CompatibleModel]): A list of verkada cameras.
-        memory (MemoryStorage): Class to store frequently accessed variables.
+        change (bool): A Boolean value that indicates whether a change to
+            the input has been detected and calculations need to be ran
+            again.
+        retention (int): The days of required retention for the command
+            connector
+        camera_dataframe (pd.DataFrame): A dataframe containing customer
+            cameras.
+        verkada_camera_list (List[CompatibleModel]): A list of verkada
+            cameras.
+        memory (MemoryStorage): Class to store frequently accessed
+            variables.
 
     Returns:
         None: This function does not return a value but triggers the
@@ -254,8 +262,11 @@ def recommend_connectors(
     Examples:
         >>> recommend_connectors(camera_dataframe)
     """
-    log.debug("Run calculations: %s", not memory.has_recommendations())
-    if not memory.has_recommendations() and not memory.has_excess_channels():
+    run_calc = (
+        not memory.has_recommendations() and not memory.has_excess_channels()
+    ) or change
+    log.debug("Run calculations: %s", run_calc)
+    if run_calc:
         low_mp_count, high_mp_count = count_mp(
             camera_dataframe, verkada_camera_list
         )
