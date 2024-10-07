@@ -28,7 +28,7 @@ colorama.init(autoreset=True)
 RETENTION = 30  # Required storage in days
 
 
-def main():
+def main(customer_model_filepath, camera_column):
     """
     Main function that orchestrates the compatibility check between
     Verkada cameras and customer cameras. It processes compatibility
@@ -42,21 +42,22 @@ def main():
     identified.
 
     Args:
-        None
+        customer_model_filepath (str): A filepath for the CSV consisting camera models.
+        camera_column (int, optional): A column name identifying the camera model.
 
     Returns:
         None
     """
 
+    command_connector_compatibility_list = (
+        "Verkada Command Connector Compatibility.csv"
+    )
+
     verkada_compatibility_list = compile_camera_mp_channels(
-        parse_hardware_compatibility_list(
-            "Verkada Command Connector Compatibility (BACKUP).csv"
-        )
+        parse_hardware_compatibility_list(command_connector_compatibility_list)
     )
     customer_cameras_list = sanitize_customer_data(
-        parse_customer_list(
-            "./Camera Compatibility Sheets/customer_sheet_2.csv"
-        ),
+        parse_customer_list(customer_model_filepath),
         get_manufacturer_set(verkada_compatibility_list),
     )
 
@@ -67,7 +68,9 @@ def main():
     # )
 
     matched_cameras = get_camera_match(
-        customer_cameras_list, verkada_compatibility_list
+        customer_cameras_list,
+        verkada_compatibility_list,
+        camera_column,
     )
     if matched_cameras is not None:
         print_results(matched_cameras, verkada_compatibility_list)
@@ -80,4 +83,8 @@ def main():
 
 # Execute if being run directly
 if __name__ == "__main__":
-    main()
+    # Modify the file path
+    CSV_FILEPATH = "./Camera Compatibility Sheets/customer_sheet_9.csv"
+    # [Optional] Modify the column number to force a specific model column number
+    MODEL_COLUMN = None
+    main(CSV_FILEPATH, MODEL_COLUMN)
