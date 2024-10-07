@@ -20,12 +20,14 @@ Avigilon,3.0C-H4A-D1,3.28.0.86(27711),
 Avigilon,3.0C-H4A-D1-IR,3.10.0.42(14581),
 Avigilon,3.0W-H3-DO1-IR,3.6.0.16(13255),
 Avigilon,360-W-30,6.7.9,ONVIF mode needs to be configured in the camera UI.
+Avigilon,4.0C-H5A-DO1-IR,4.8.0.12(40000),
 Avigilon,5.0-H3-BO1-IR,2.6.0.172(26469),
 Avigilon,5.0C-H5M-DO1-IR,4.12.0.82(33818),
 Avigilon,6.0C-H5DH-DO1-IR,4.80.0.22(0c5a7909),
 Avigilon,BULLET-TE-W-4K-30,6.8.6,ONVIF mode needs to be configured in the camera UI.
 Avigilon,ENC-4P-H264,2.2.0.86(5119),
 Avigilon,QUAD-20MP-30,6.5.5,ONVIF mode needs to be configured in the camera UI.
+Axis,M3007-PV,5.70.1 & 6.50.5.2,
 Axis Communications,A8105-E,1.65.9,
 Axis Communications,AXIS Q3538-LVE,11.10.61,
 Axis Communications,D2110-VE,11.10.61,
@@ -193,7 +195,7 @@ Hanwha Techwin,PNM-12082RVD,2.22.01_20240103_R165,Streaming to multiple connetor
 Hanwha Techwin,PNM-8082VT,2.22.00_20231103_R219,Streaming to multiple connetors simultaneously can cause all streams to stop.
 Hanwha Techwin,PNM-9000VD,1.32.01_20200825_R198,Streaming to multiple connetors simultaneously can cause all streams to stop.
 Hanwha Techwin,PNM-9022V,2.22.00_20231103_R155,Streaming to multiple connetors simultaneously can cause all streams to stop.
-Hanwha Techwin,PNM-9031RV,2.22.01_20231101_R542,Streaming to multiple connetors simultaneously can cause all streams to stop.
+Hanwha Techwin,PNM-9031RV,2.22.01_20231101_R542,Streaming to multiple connectors simultaneously can cause all streams to stop.
 Hanwha Techwin,PNM-C12083RVD,2.21.03_20231025_R352,Streaming to multiple connetors simultaneously can cause all streams to stop.
 Hanwha Techwin,PNM-C16083RVQ,23.01.02_20231012_R660,Streaming to multiple connetors simultaneously can cause all streams to stop.
 Hanwha Techwin,PNM-C32083RVQ,23.01.02_20231012_R660,Streaming to multiple connetors simultaneously can cause all streams to stop.
@@ -261,13 +263,18 @@ Hikvision,DS-2TD2628-3/QA,V5.5.58 build 220727,
 Hikvision,ECI-B12F2,V5.7.1 build 220609,
 Hikvision,ECI-T24F2,V5.7.1 build 220609,
 Hikvision,HIKVISION DS-2CD2343G2-IU,V5.7.17,
+Hikvision,NC324-TD,V5.5.61 build 180828,
 Honeywell,HC30W45R2,2.0.11.20210224,
 Honeywell,HC30WF5R1,2.0.11.20210224,
 Honeywell,HC35W45R2,HC3.23.1.25.20231031,
 Honeywell,HC35WB5R3,HC3.23.1.25.20231031,
 Honeywell,HC60W35R2,1.0.21.20200828,
 Honeywell,HC60W45R2,1.0.10.20200422,
+Illustra,IFS03-D21-AT03,Illustra.SS008.03.00.00.0301,
 Interlogix,TVC-M5225E-3M-N,V5.0.s,
+LTS,CMIP3382W-28MDA,V5.7.12 build 230825,
+LTS,CMIP7342WB-28MDA,V5.7.12 build 230825,
+Milesight,MS-C5375-PD,51.7.0.77-r8,
 OpenEye,OE-C1012D2-1,IPC_G6107-B0002P86D1806C08NB,
 OpenEye,OE-C1012D2-S,IPC-B6202.5.37.C05546NB.220224,
 OpenEye,OE-C3012T4B-S,IPC-B6202.5.82.C055130.NB.230914,
@@ -289,6 +296,7 @@ Pelco,IMF82-1ES,4.80.0.16(835f547f),
 Pelco,IMM12027,2.13.1.3.8360-A0.0,
 Pelco,IMP1110-1,03.29.59-20160303,
 Pelco,P2230L-ESR,05.30.1.10-20230308,
+ReoLink,RLC-520A,v3.1.0.801_22010701,
 Sony,SNC-DH140T,1.88.00,
 Sony,SNC-DH180,1.88.00,
 Sony,SNC-EM631,2.8.0,
@@ -300,6 +308,8 @@ Speco,O2iD4M,5.1,
 Speco,O4VT2G,5.1,
 Speco,O8D2M,2.460.0001.13.R - Build Date 2017-09-14,
 Uniview,IPC354SR3-ADNPF28-F,IPC_G6107-B0001P97D1806,
+Uniview,IPFE5360X,IPC_G6107-B0001P97D1806,
+Uniview,IPT528AIX,IPC_G6107-B0001P97D1806,
 Vivotek,IB9388-HT,223,
 i-PRO/Panasonic,M-5360,GIPC-B6203.6.10.C03858.NB.221206,
 i-PRO/Panasonic,WV-S2131L,5,
