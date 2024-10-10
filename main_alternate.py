@@ -6,19 +6,13 @@ Purpose: Create a GUI through which the application may be run and managed.
 
 import os
 import ast
-from subprocess import check_call
-from sys import executable
 from typing import Optional, List
 
 import pandas as pd
 from tkinter import (
-    Button,
     Frame,
-    Label,
-    Scrollbar,
     Text,
     filedialog,
-    Spinbox,
     IntVar,
     StringVar,
     BOTH,
@@ -29,7 +23,7 @@ from tkinter import (
     Y,
     ttk, WORD, END, DISABLED,
 )
-from colorama import Fore, Style, init
+from colorama import init
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from ttkthemes import ThemedStyle
 
@@ -52,6 +46,7 @@ ERROR_PROCESSING = "Error: Could not process file."
 DEFAULT_FILE_STATUS = "No File Selected."
 DETAILS_LABEL = "Additional Details"
 
+
 class CameraCompatibilityApp:
     def __init__(self, window):
         self.root = window
@@ -67,7 +62,7 @@ class CameraCompatibilityApp:
 
         style = ThemedStyle(self.root)
         style.set_theme("equilux")
-        style.configure("RunButton.TButton", background="#ffffff", font=("Helvetica", 14, "bold"))
+        style.configure("RunButton.TButton", background="#fffcff", font=("Helvetica", 14, "bold"))
 
         self._create_widgets()
         self._setup_layout()
@@ -155,7 +150,7 @@ class CameraCompatibilityApp:
     def _update_file_selection(self, file_selection: str):
         self.customer_file_path = file_selection
         self.file_status.set(f"Selected: {os.path.basename(self.customer_file_path)}")
-        self.run_button.config(state="normal")
+        self.run_button.config(state="normal", style="RunButton.TButton")
         self.status_label.config(text="File loaded. Click 'Run Check' to process.", foreground="#ccffcc", font=("Helvetica", 14))
 
     @time_function
@@ -200,7 +195,7 @@ class CameraCompatibilityApp:
             }
 
             match_type = row.get("match_type", "unknown").lower()
-            tag = self._get_tag_for_match_type(match_type)
+            tag = self._get_tag_for_match_type(str(match_type))
 
             self.text_widget.insert("", "end", values=(row["name"], int(row["count"]), row["verkada_model"]), tags=(str(details), tag))
 
@@ -208,10 +203,10 @@ class CameraCompatibilityApp:
 
     def _configure_tags(self):
         # Configure tags for different match types with softer colors
-        self.text_widget.tag_configure('unsupported', background='#ffcccc', foreground='#660000')
-        self.text_widget.tag_configure('potential', background='#fff2cc', foreground='#665500')
-        self.text_widget.tag_configure('exact', background='#ccffcc', foreground='#006600')
-        self.text_widget.tag_configure('identified', background='#cce5ff', foreground='#003366')
+        self.text_widget.tag_configure('unsupported', foreground='#ffcccc')
+        self.text_widget.tag_configure('potential', foreground='#fff2cc')
+        self.text_widget.tag_configure('exact', foreground='#ccffcc')
+        self.text_widget.tag_configure('identified', foreground='#cce5ff')
 
     def _get_tag_for_match_type(self, match_type: str) -> Optional[str]:
         tag_map = {
@@ -254,7 +249,7 @@ class CameraCompatibilityApp:
     def change_detected(self):
         log.debug("Change detected")
         self.change_detected_flag = True
-        self.status_label.config(text="Changes detected. Re-run the check for updated results.", foreground="blue")
+        self.status_label.config(text="Changes detected. Re-run the check for updated results.", foreground="#cce5ff")
 
 
 if __name__ == "__main__":
