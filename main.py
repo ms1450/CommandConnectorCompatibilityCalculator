@@ -9,6 +9,8 @@ Purpose: Create a GUI through which the application may be ran and managed.
 # [x] TODO: Re-run calculations if the file has changed
 # [x] TODO: Add input to set the retention period (spin wheel)
 # [x] TODO: Re-run calculations when retention is changed
+# [ ] TODO: Add popup if retention bounds are violated
+# [ ] TODO: Add text indicating Spinbox is for retention.
 # [ ] TODO: Set dynamic horizontal scroll bars
 # [ ] TODO: Show excess channels
 # [ ] TODO: Store results in a database to prevent the need for rerunning
@@ -110,7 +112,7 @@ class CameraCompatibilityApp:
         self.button = Button(
             button_frame, text="Select File", command=self.select_file
         )
-        self.button.pack(pady=5)
+        self.button.grid(row=0, column=1, pady=5)
 
         window.drop_target_register(DND_FILES)
         window.dnd_bind("<<Drop>>", self.on_drop)
@@ -120,25 +122,46 @@ class CameraCompatibilityApp:
             text="Run Compatibility Check",
             command=self.run_check,
         )
-        self.submit_button.pack_forget()  # Hide the button
+        self.submit_button.grid(row=1, column=1, padx=5, pady=5)
+        self.submit_button.grid_remove()  # Hide the button
+
+        self.show_compatible_button = Button(
+            button_frame,
+            text="Show Compatible Cameras",
+            command=self.show_compatible,
+        )
+        self.show_compatible_button.grid(row=1, column=0, padx=5, pady=5)
+        self.show_compatible_button.grid_remove()
+
+        self.show_recommendation_button = Button(
+            button_frame,
+            text="Show Recommendation",
+            command=self.show_recommendation,
+        )
+        self.show_recommendation_button.grid(row=1, column=2, padx=5, pady=5)
+        self.show_recommendation_button.grid_remove()
 
         self.retention = IntVar()
-        retention_entry = Spinbox(
+        self.retention_entry = Spinbox(
             window,
-            from_=30,
+            from_=0,
             to=90,
             textvariable=self.retention,
             width=2,
             command=self.change_detected,
+            validate="key",
+            validatecommand=(window.register((self.validate_input)), "%P"),
         )
-        retention_entry.pack()
+        self.retention_entry.pack()
+        self.retention_entry.bind("<FocusOut>", self.correct_value)
 
         # Scrollable text frame for results
         frame = Frame(window)
         frame.pack(fill="both", expand=True)
 
         self.text_widget = Text(
-            frame, wrap="none", takefocus=False)  # Prevent text from wrapping
+            frame, wrap="none", takefocus=False
+        )  # Prevent text from wrapping
         self.text_widget.pack(side=LEFT, fill="both", expand=True)
         self.text_widget.config(height=15, state="disabled")
 
@@ -148,6 +171,64 @@ class CameraCompatibilityApp:
         scrollbar.pack(side=RIGHT, fill=Y)
 
         self.text_widget.config(yscrollcommand=scrollbar.set)
+
+    def validate_input(self, value):
+        """Validate the input value for numeric content.
+
+        This method checks if the provided value is either an empty string
+        or a string that consists solely of digits. If the value is valid,
+        it is returned; otherwise, an empty string is returned.
+
+        Args:
+            value: The input value to be validated.
+
+        Returns:
+            The original value if valid; otherwise, an empty string.
+        """
+        return value if value == "" or value.isdigit() else ""
+
+    def correct_value(
+        self,
+        _,
+    ):
+        """Correct the retention value if it is out of bounds.
+
+        This method checks the current retention value and adjusts it if
+        it exceeds the maximum limit of 90 or falls below the minimum limit
+        of 0. If the value is out of bounds, it updates the retention value
+        to the nearest valid limit.
+
+        Args:
+            _: A placeholder argument that is not used in the method.
+
+        Returns:
+            None
+        """
+        current_value = self.retention.get()
+        if current_value > 90:
+            self.update_text(90, "90")
+        elif current_value < 0:
+            self.update_text(0, "0")
+
+    def update_text(self, value, text):
+        """Update the retention value and entry field with new text.
+
+        This method sets the retention value to the specified argument
+        and updates the entry field with a new text value. It clears
+        any existing text in the entry field before inserting the new
+        value.
+
+        Args:
+            value: The new retention value to be set.
+            text: The text to be inserted into the entry field.
+
+        Returns:
+            None
+        """
+
+        self.retention.set(value)
+        self.retention_entry.delete(0, "end")
+        self.retention_entry.insert(0, text)
 
     def select_file(self):
         """Opens a file dialog for the user to select a CSV file.
@@ -166,10 +247,7 @@ class CameraCompatibilityApp:
             filetypes=[("CSV files", "*.csv")]
         ):
             self.customer_file_path = file_path
-            self.label.config(
-                text=f"Selected: {basename(self.customer_file_path)}"
-            )
-            self.submit_button.pack()
+            self.update_view()
 
     def on_drop(self, event):
         """
@@ -188,10 +266,16 @@ class CameraCompatibilityApp:
         """
         self.change_detected()
         self.customer_file_path = event.data.strip("{}")
+        self.update_view()
+
+    def update_view(self):
+        """Updates the window with new text and buttons."""
         self.label.config(
             text=f"Selected: {basename(self.customer_file_path)}"
         )
-        self.submit_button.pack()
+        self.submit_button.grid()
+        self.show_compatible_button.grid()
+        self.show_recommendation_button.grid()
 
     @time_function
     def run_check(self):
@@ -273,7 +357,7 @@ class CameraCompatibilityApp:
         log.debug("Setting retention to True")
         self.change = True
 
-    def show_excess(self):
+    def show_recommendation(self):
         """Show the excess amount of channels."""
         self.text_widget.delete("1.0", "end")  # Clear
         self.text_widget.insert("end", self.memory.recommendations)
