@@ -252,7 +252,20 @@ def get_camera_match(
 
     result = get_camera_count(customer_list, result)
     log.info("First 10 Matched Results: \n '%s'", result.head(10).to_string())
-    return result
+
+    # Define the order for sorting match types
+    match_order = {
+        "exact": 1,
+        "identified": 2,
+        "potential": 3,
+        "unsupported": 4
+    }
+
+    # Sort the results by match type using the defined order
+    result['match_type_order'] = result['match_type'].map(match_order)
+    sorted_result = result.sort_values(by='match_type_order').drop(columns=['match_type_order'])
+
+    return sorted_result
 
 
 @time_function
