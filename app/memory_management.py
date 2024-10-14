@@ -6,19 +6,7 @@ compute in the application.
 
 # pylint: disable=ungrouped-imports
 
-from subprocess import check_call
-from sys import executable
-from tkinter import Text
-
-try:
-    from tkinterdnd2 import TkinterDnD
-except ImportError as e:
-    package_name = str(e).split()[-1]
-    check_call([executable, "-m", "pip", "install", package_name])
-    # Import again after installation
-    from tkinterdnd2 import TkinterDnD
-
-from app.output import gui_creation
+# from app.output import gui_creation
 from app.formatting import print_connector_recommendation
 
 
@@ -190,22 +178,3 @@ class MemoryStorage:
             None
         """
         print_connector_recommendation(self.recommendations)
-
-    def print_compatible(self, root: TkinterDnD.Tk, text_widget: Text):
-        """Displays compatible items in the specified text widget.
-
-        This method utilizes the GUI creation function to present the
-        compatible items in the provided text widget within the specified
-        root window. It ensures that the compatible items are visually
-        represented in the user interface.
-
-        Args:
-            self: The instance of the class.
-            root (TkinterDnD.Tk): The root window for the GUI.
-            text_widget (Text): The text widget where compatible items
-                will be displayed.
-
-        Returns:
-            None
-        """
-        gui_creation(self.compatible, root, text_widget)
