@@ -258,12 +258,14 @@ def get_camera_match(
         "exact": 1,
         "identified": 2,
         "potential": 3,
-        "unsupported": 4
+        "unsupported": 4,
     }
 
     # Sort the results by match type using the defined order
-    result['match_type_order'] = result['match_type'].map(match_order)
-    sorted_result = result.sort_values(by='match_type_order').drop(columns=['match_type_order'])
+    result["match_type_order"] = result["match_type"].map(match_order)
+    sorted_result = result.sort_values(by="match_type_order").drop(
+        columns=["match_type_order"]
+    )
 
     return sorted_result
 
