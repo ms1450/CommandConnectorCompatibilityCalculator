@@ -5,7 +5,6 @@ Purpose: Create a GUI through which the application may be run and managed.
 """
 
 import os
-import ast
 from typing import Optional, List
 
 import pandas as pd
@@ -21,17 +20,23 @@ from tkinter import (
     BOTTOM,
     X,
     Y,
-    ttk, WORD, END, DISABLED,
+    WORD,
+    END,
+    DISABLED,
 )
+from tkinter import ttk
 from colorama import init
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from ttkthemes import ThemedStyle
 
 from app import log, time_function, CompatibleModel
 from app.calculations import compile_camera_mp_channels, get_camera_match
-from app.memory_management import MemoryStorage
 from app.file_handling import parse_customer_list, parse_hardware_compatibility_list
-from app.formatting import get_manufacturer_set, sanitize_customer_data, list_verkada_camera_details
+from app.formatting import (
+    get_manufacturer_set,
+    sanitize_customer_data,
+    list_verkada_camera_details,
+)
 
 # Initialize colorized output
 init(autoreset=True)
@@ -50,10 +55,10 @@ DETAILS_LABEL = "Additional Details"
 class CameraCompatibilityApp:
     def __init__(self, window):
         self.root = window
-        self.memory = MemoryStorage()
         self.change_detected_flag = True
         self.customer_file_path: Optional[str] = None
         self.file_status = StringVar(value=DEFAULT_FILE_STATUS)
+        self.item_details = {}  # Store item details safely
         self._setup_ui()
 
     def _setup_ui(self):
@@ -62,7 +67,9 @@ class CameraCompatibilityApp:
 
         style = ThemedStyle(self.root)
         style.set_theme("equilux")
-        style.configure("RunButton.TButton", background="#fffcff", font=("Helvetica", 14, "bold"))
+        style.configure(
+            "RunButton.TButton", background="#fffcff", font=("Helvetica", 14, "bold")
+        )
 
         self._create_widgets()
         self._setup_layout()
@@ -72,20 +79,36 @@ class CameraCompatibilityApp:
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.file_frame = self._create_file_frame()
         self.options_frame = self._create_options_frame()
-        self.run_button = ttk.Button(self.main_frame, text=RUN_CHECK_TEXT, command=self.run_check, state="disabled", style="RunButton.TButton")
+        self.run_button = ttk.Button(
+            self.main_frame,
+            text=RUN_CHECK_TEXT,
+            command=self.run_check,
+            state="disabled",
+            style="RunButton.TButton",
+        )
         self.result_frame = self._create_result_frame()
         self.details_frame = self._create_details_frame()
-        self.status_label = ttk.Label(self.main_frame, text="", font=("Helvetica", 14, "italic"))
+        self.status_label = ttk.Label(
+            self.main_frame, text="", font=("Helvetica", 14, "italic")
+        )
 
     def _create_file_frame(self) -> Frame:
         file_frame = ttk.Frame(self.main_frame)
-        ttk.Label(file_frame, textvariable=self.file_status, font=("Helvetica", 14)).pack(side=LEFT, fill=X, expand=True)
-        ttk.Button(file_frame, text=SELECT_CSV_TEXT, command=self.select_file).pack(side=RIGHT)
+        ttk.Label(
+            file_frame, textvariable=self.file_status, font=("Helvetica", 14)
+        ).pack(side=LEFT, fill=X, expand=True)
+        ttk.Button(file_frame, text=SELECT_CSV_TEXT, command=self.select_file).pack(
+            side=RIGHT
+        )
         return file_frame
 
     def _create_options_frame(self) -> Frame:
         options_frame = ttk.Frame(self.main_frame)
-        ttk.Label(options_frame, text="Retention Period (days):", font=("Helvetica", 14)).pack(side=LEFT, padx=(0, 10))
+        ttk.Label(
+            options_frame,
+            text="Retention Period (days):",
+            font=("Helvetica", 14),
+        ).pack(side=LEFT, padx=(0, 10))
         self.retention = IntVar(value=30)
         ttk.Spinbox(
             options_frame,
@@ -94,32 +117,46 @@ class CameraCompatibilityApp:
             increment=30,
             textvariable=self.retention,
             width=5,
-            command=self.change_detected
+            command=self.change_detected,
         ).pack(side=LEFT)
         return options_frame
 
     def _create_result_frame(self) -> Frame:
         result_frame = ttk.Frame(self.main_frame)
-        self.text_widget = ttk.Treeview(result_frame, columns=("Name", "Count", "Matched Model"), show="headings")
-        for col in self.text_widget["columns"]:
-            self.text_widget.heading(col, text=col)
-        self.text_widget.column("Name", width=150)
-        self.text_widget.column("Count", width=50, anchor="center")
-        self.text_widget.column("Matched Model", width=150)
+        self.treeview = ttk.Treeview(
+            result_frame,
+            columns=("Name", "Count", "Matched Model"),
+            show="headings",
+        )
+        for col in self.treeview["columns"]:
+            self.treeview.heading(col, text=col)
+        self.treeview.column("Name", width=250)
+        self.treeview.column("Count", width=100, anchor="center")
+        self.treeview.column("Matched Model", width=250)
 
-        self.scrollbar_y = ttk.Scrollbar(result_frame, orient="vertical", command=self.text_widget.yview)
-        self.scrollbar_x = ttk.Scrollbar(result_frame, orient="horizontal", command=self.text_widget.xview)
-        self.text_widget.configure(yscrollcommand=self.scrollbar_y.set, xscrollcommand=self.scrollbar_x.set)
+        self.scrollbar_y = ttk.Scrollbar(
+            result_frame, orient="vertical", command=self.treeview.yview
+        )
+        self.scrollbar_x = ttk.Scrollbar(
+            result_frame, orient="horizontal", command=self.treeview.xview
+        )
+        self.treeview.configure(
+            yscrollcommand=self.scrollbar_y.set, xscrollcommand=self.scrollbar_x.set
+        )
 
-        self.text_widget.pack(side=LEFT, fill=BOTH, expand=True)
+        self.treeview.pack(side=LEFT, fill=BOTH, expand=True)
         self.scrollbar_y.pack(side=RIGHT, fill=Y)
         self.scrollbar_x.pack(side=BOTTOM, fill=X)
         return result_frame
 
     def _create_details_frame(self) -> Frame:
         details_frame = ttk.Frame(self.main_frame, padding="10")
-        ttk.Label(details_frame, text=DETAILS_LABEL, font=("Helvetica", 14)).pack(anchor="w")
-        self.details_text = Text(details_frame, wrap=WORD, height=4, font=("Helvetica", 14))
+        ttk.Label(details_frame, text=DETAILS_LABEL, font=("Helvetica", 14)).pack(
+            anchor="w"
+        )
+        self.details_text = Text(
+            details_frame, wrap=WORD, height=6, font=("Helvetica", 14)
+        )
         self.details_text.config(state=DISABLED)
         self.details_text.pack(fill=BOTH, expand=True, pady=5)
         return details_frame
@@ -151,105 +188,149 @@ class CameraCompatibilityApp:
         self.customer_file_path = file_selection
         self.file_status.set(f"Selected: {os.path.basename(self.customer_file_path)}")
         self.run_button.config(state="normal", style="RunButton.TButton")
-        self.status_label.config(text="File loaded. Click 'Run Check' to process.", foreground="#ccffcc", font=("Helvetica", 14))
+        self.status_label.config(
+            text="File loaded. Click 'Run Check' to process.",
+            foreground="#ccffcc",
+            font=("Helvetica", 14),
+        )
 
     @time_function
     def run_check(self):
         if not self.customer_file_path:
-            self.status_label.config(text=ERROR_NO_FILE, foreground="#ffcccc", font=("Helvetica", 14))
+            self.status_label.config(
+                text=ERROR_NO_FILE, foreground="#ffcccc", font=("Helvetica", 14)
+            )
             return
 
-        self.status_label.config(text=PROCESSING_TEXT, foreground="#fff2cc", font=("Helvetica", 14))
+        self.status_label.config(
+            text=PROCESSING_TEXT, foreground="#fff2cc", font=("Helvetica", 14)
+        )
         self.root.update()
 
         try:
+            # Allow user to select compatibility list file if needed
+            compatibility_file = "Verkada Command Connector Compatibility.csv"
+            if not os.path.exists(compatibility_file):
+                compatibility_file = filedialog.askopenfilename(
+                    title="Select Compatibility List CSV",
+                    filetypes=[("CSV files", "*.csv")],
+                )
+                if not compatibility_file:
+                    self.status_label.config(
+                        text="Error: Compatibility list not found.",
+                        foreground="#ffcccc",
+                        font=("Helvetica", 14),
+                    )
+                    return
+
             verkada_compatibility_list = compile_camera_mp_channels(
-                parse_hardware_compatibility_list("Verkada Command Connector Compatibility.csv")
+                parse_hardware_compatibility_list(compatibility_file)
             )
             customer_cameras_list = sanitize_customer_data(
                 parse_customer_list(self.customer_file_path),
                 get_manufacturer_set(verkada_compatibility_list),
             )
-            matched_cameras = get_camera_match(customer_cameras_list, verkada_compatibility_list)
+            matched_cameras = get_camera_match(
+                customer_cameras_list, verkada_compatibility_list
+            )
 
             if matched_cameras is not None:
                 self._display_results(matched_cameras, verkada_compatibility_list)
-                self.status_label.config(text=COMPLETED_TEXT, foreground="#ccffcc", font=("Helvetica", 14))
+                self.status_label.config(
+                    text=COMPLETED_TEXT, foreground="#ccffcc", font=("Helvetica", 14)
+                )
             else:
-                self.status_label.config(text=ERROR_PROCESSING, foreground="#ffcccc", font=("Helvetica", 14))
+                self.status_label.config(
+                    text=ERROR_PROCESSING, foreground="#ffcccc", font=("Helvetica", 14)
+                )
         except Exception as e:
-            self.status_label.config(text=f"Error: {str(e)}", foreground="#ffcccc", font=("Helvetica", 14))
+            log.error("Error in run_check: %s", str(e))
+            self.status_label.config(
+                text=f"Error: {str(e)}", foreground="#ffcccc", font=("Helvetica", 14)
+            )
         self.toggle_change()
 
-    def _display_results(self, matched_cameras: pd.DataFrame, verkada_list: List[CompatibleModel]):
-        self.text_widget.delete(*self.text_widget.get_children())
+    def _display_results(
+        self, matched_cameras: pd.DataFrame, verkada_list: List[CompatibleModel]
+    ):
+        self.treeview.delete(*self.treeview.get_children())
         self._configure_tags()
 
-        for index, row in matched_cameras.iterrows():
-            verkada_details = list_verkada_camera_details(row["verkada_model"], verkada_list)
+        for _, row in matched_cameras.iterrows():
+            verkada_details = list_verkada_camera_details(
+                row["verkada_model"], verkada_list
+            )
             details = {
-                "match_type": row["match_type"],
-                "manufacturer": verkada_details[1] if pd.notna(verkada_details[1]) else "N/A",
-                "firmware": verkada_details[2] if pd.notna(verkada_details[2]) else "N/A",
-                "notes": verkada_details[3] if pd.notna(verkada_details[3]) else "N/A"
+                "Match Type": row["match_type"],
+                "Manufacturer": verkada_details[1]
+                if pd.notna(verkada_details[1])
+                else "N/A",
+                "Min. Firmware": verkada_details[2]
+                if pd.notna(verkada_details[2])
+                else "N/A",
+                "Notes": verkada_details[3] if pd.notna(verkada_details[3]) else "N/A",
             }
 
             match_type = row.get("match_type", "unknown").lower()
             tag = self._get_tag_for_match_type(str(match_type))
 
-            self.text_widget.insert("", "end", values=(row["name"], int(row["count"]), row["verkada_model"]), tags=(str(details), tag))
+            item_id = self.treeview.insert(
+                "",
+                "end",
+                values=(row["name"], int(row["count"]), row["verkada_model"]),
+                tags=(tag,),
+            )
+            self.item_details[item_id] = details
 
-        self.text_widget.bind("<ButtonRelease-1>", self.on_tree_click)
+        self.treeview.bind("<ButtonRelease-1>", self.on_tree_click)
 
     def _configure_tags(self):
         # Configure tags for different match types with softer colors
-        self.text_widget.tag_configure('unsupported', foreground='#ffcccc')
-        self.text_widget.tag_configure('potential', foreground='#fff2cc')
-        self.text_widget.tag_configure('exact', foreground='#ccffcc')
-        self.text_widget.tag_configure('identified', foreground='#cce5ff')
+        self.treeview.tag_configure("unsupported", foreground="#ff4d4d")
+        self.treeview.tag_configure("potential", foreground="#ffcc00")
+        self.treeview.tag_configure("exact", foreground="#33cc33")
+        self.treeview.tag_configure("identified", foreground="#3399ff")
 
     def _get_tag_for_match_type(self, match_type: str) -> Optional[str]:
         tag_map = {
-            "unsupported": 'unsupported',
-            "potential": 'potential',
-            "exact": 'exact',
-            "identified": 'identified',
+            "unsupported": "unsupported",
+            "potential": "potential",
+            "exact": "exact",
+            "identified": "identified",
         }
         return tag_map.get(match_type, None)
 
     def on_tree_click(self, event):
-        item = self.text_widget.identify_row(event.y)
+        item = self.treeview.identify_row(event.y)
         if item:
-            details_str = self.text_widget.item(item, 'tags')[0]
-            try:
-                details = ast.literal_eval(details_str)
+            details = self.item_details.get(item)
+            if details:
                 self.display_details(details)
-            except (SyntaxError, ValueError):
-                log.error("Error parsing details: %s", details_str)
 
     def display_details(self, details):
         self.details_text.config(state="normal")
         self.details_text.delete(1.0, END)
 
-        details_text = (
-            f"Match Type: {details.get('match_type')}\n"
-            f"Manufacturer: {details.get('manufacturer')}\n"
-            f"Min. Firmware: {details.get('firmware')}\n"
-            f"Notes: {details.get('notes')}"
-        )
-        print(details_text)
+        details_text = "\n".join(f"{key}: {value}" for key, value in details.items())
 
         self.details_text.insert(END, details_text)
         self.details_text.config(state=DISABLED)
 
     def toggle_change(self):
-        log.debug("Setting self.change from %s to %s.", self.change_detected_flag, not self.change_detected_flag)
+        log.debug(
+            "Setting self.change_detected_flag from %s to %s.",
+            self.change_detected_flag,
+            not self.change_detected_flag,
+        )
         self.change_detected_flag = not self.change_detected_flag
 
     def change_detected(self):
         log.debug("Change detected")
         self.change_detected_flag = True
-        self.status_label.config(text="Changes detected. Re-run the check for updated results.", foreground="#cce5ff")
+        self.status_label.config(
+            text="Changes detected. Re-run the check for updated results.",
+            foreground="#cce5ff",
+        )
 
 
 if __name__ == "__main__":
