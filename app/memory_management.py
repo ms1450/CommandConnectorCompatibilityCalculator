@@ -71,6 +71,19 @@ class MemoryStorage:
         """
         self.recommendations = recommendations
 
+    def get_recommendations(self):
+        """Gets the recommendations for memory management.
+
+        This method returns the recommendations for memory management.
+
+        Args:
+            self: The instance of the class.
+
+        Returns:
+            The recommendations for memory management.
+        """
+        return self.recommendations
+
     def set_excess_channels(self, excess_channels):
         """Sets the value of excess channels for memory management.
 
@@ -86,6 +99,19 @@ class MemoryStorage:
             None
         """
         self.excess_channels = excess_channels
+
+    def get_excess_channels(self):
+        """Gets the value of excess channels for memory management.
+
+        This method returns the value of excess channels for memory management.
+
+        Args:
+            self: The instance of the class.
+
+        Returns:
+              The value of excess channels for memory management.
+        """
+        return self.excess_channels
 
     def set_compatible_cameras(self, compatible):
         """Sets the value of compatible cameras for memory management.

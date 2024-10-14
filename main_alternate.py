@@ -1,9 +1,3 @@
-"""
-Author: Ian Young
-Co-Author: Mehul Sen
-Purpose: Create a GUI through which the application may be run and managed.
-"""
-
 import os
 from typing import Optional, List
 
@@ -23,6 +17,7 @@ from tkinter import (
     WORD,
     END,
     DISABLED,
+    NORMAL,
 )
 from tkinter import ttk
 from colorama import init
@@ -30,13 +25,18 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 from ttkthemes import ThemedStyle
 
 from app import log, time_function, CompatibleModel
-from app.calculations import compile_camera_mp_channels, get_camera_match
+from app.calculations import (
+    compile_camera_mp_channels,
+    get_camera_match,
+)
 from app.file_handling import parse_customer_list, parse_hardware_compatibility_list
 from app.formatting import (
     get_manufacturer_set,
     sanitize_customer_data,
     list_verkada_camera_details,
 )
+from app.memory_management import MemoryStorage
+from app.recommend import count_mp, recommend_connectors, calculate_4k_storage, calculate_low_mp_storage
 
 # Initialize colorized output
 init(autoreset=True)
@@ -51,19 +51,21 @@ ERROR_PROCESSING = "Error: Could not process file."
 DEFAULT_FILE_STATUS = "No File Selected."
 DETAILS_LABEL = "Additional Details"
 
-
 class CameraCompatibilityApp:
     def __init__(self, window):
         self.root = window
         self.change_detected_flag = True
         self.customer_file_path: Optional[str] = None
         self.file_status = StringVar(value=DEFAULT_FILE_STATUS)
+        self.recommendation_enabled = IntVar(value=0)  # Variable for checkbox
         self.item_details = {}  # Store item details safely
+        self.memory = MemoryStorage()  # Instantiate MemoryStorage
         self._setup_ui()
+        self.toggle_recommendation_visibility()  # Set initial visibility
 
     def _setup_ui(self):
         self.root.title("Command Connector Compatibility Calculator")
-        self.root.geometry("800x600")
+        self.root.geometry("900x700")
 
         style = ThemedStyle(self.root)
         style.set_theme("equilux")
@@ -91,6 +93,7 @@ class CameraCompatibilityApp:
         self.status_label = ttk.Label(
             self.main_frame, text="", font=("Helvetica", 14, "italic")
         )
+        self.recommendation_frame = self._create_recommendation_frame()  # New frame for recommendations
 
     def _create_file_frame(self) -> Frame:
         file_frame = ttk.Frame(self.main_frame)
@@ -104,21 +107,36 @@ class CameraCompatibilityApp:
 
     def _create_options_frame(self) -> Frame:
         options_frame = ttk.Frame(self.main_frame)
-        ttk.Label(
-            options_frame,
+
+        # Frame for Retention Period input
+        self.retention_frame = ttk.Frame(options_frame)
+        self.retention_label = ttk.Label(
+            self.retention_frame,
             text="Retention Period (days):",
             font=("Helvetica", 14),
-        ).pack(side=LEFT, padx=(0, 10))
+        )
+        self.retention_label.pack(side=LEFT, padx=(0, 10))
         self.retention = IntVar(value=30)
-        ttk.Spinbox(
-            options_frame,
+        self.retention_spinbox = ttk.Spinbox(
+            self.retention_frame,
             from_=30,
             to=90,
             increment=30,
             textvariable=self.retention,
             width=5,
             command=self.change_detected,
-        ).pack(side=LEFT)
+        )
+        self.retention_spinbox.pack(side=LEFT, padx=(0, 20))
+        self.retention_frame.pack(side=LEFT)  # Initially packed, will be toggled
+
+        # Checkbox for enabling recommendation
+        self.recommendation_checkbox = ttk.Checkbutton(
+            options_frame,
+            text="Recommend Command Connectors",
+            variable=self.recommendation_enabled,
+            command=self.toggle_recommendation_visibility,
+        )
+        self.recommendation_checkbox.pack(side=LEFT)
         return options_frame
 
     def _create_result_frame(self) -> Frame:
@@ -161,6 +179,21 @@ class CameraCompatibilityApp:
         self.details_text.pack(fill=BOTH, expand=True, pady=5)
         return details_frame
 
+    def _create_recommendation_frame(self) -> Frame:
+        recommendation_frame = ttk.Frame(self.main_frame, padding="10")
+        ttk.Label(
+            recommendation_frame,
+            text="Command Connector Recommendations",
+            font=("Helvetica", 14, "bold"),
+        ).pack(anchor="w")
+
+        self.recommendation_text = Text(
+            recommendation_frame, wrap=WORD, height=4, font=("Helvetica", 14)
+        )
+        self.recommendation_text.config(state=DISABLED)
+        self.recommendation_text.pack(fill=BOTH, expand=True, pady=5)
+        return recommendation_frame
+
     def _setup_layout(self):
         self.main_frame.pack(fill=BOTH, expand=True)
         self.file_frame.pack(fill=X, pady=(0, 10))
@@ -168,6 +201,7 @@ class CameraCompatibilityApp:
         self.run_button.pack(fill=X, pady=(0, 10))
         self.result_frame.pack(fill=BOTH, expand=True)
         self.details_frame.pack(fill=X, pady=(10, 0))
+        # self.recommendation_frame.pack(fill=X, pady=(10, 0))  # Initially not packed
         self.status_label.pack(fill=X, pady=(10, 0))
 
     def _configure_drag_and_drop(self):
@@ -239,6 +273,15 @@ class CameraCompatibilityApp:
                 self.status_label.config(
                     text=COMPLETED_TEXT, foreground="#ccffcc", font=("Helvetica", 14)
                 )
+
+                # If recommendation is enabled, perform recommendations
+                if self.recommendation_enabled.get():
+                    self._perform_recommendations(matched_cameras, verkada_compatibility_list)
+                else:
+                    self.recommendation_text.config(state=NORMAL)
+                    self.recommendation_text.delete(1.0, END)
+                    self.recommendation_text.insert(END, "Recommendations not enabled.")
+                    self.recommendation_text.config(state=DISABLED)
             else:
                 self.status_label.config(
                     text=ERROR_PROCESSING, foreground="#ffcccc", font=("Helvetica", 14)
@@ -308,13 +351,61 @@ class CameraCompatibilityApp:
                 self.display_details(details)
 
     def display_details(self, details):
-        self.details_text.config(state="normal")
+        self.details_text.config(state=NORMAL)
         self.details_text.delete(1.0, END)
 
         details_text = "\n".join(f"{key}: {value}" for key, value in details.items())
 
         self.details_text.insert(END, details_text)
         self.details_text.config(state=DISABLED)
+
+    def _perform_recommendations(
+        self, matched_cameras: pd.DataFrame, verkada_list: List[CompatibleModel]
+    ):
+        # Count the number of low and high MP cameras
+        low_mp_count, high_mp_count = count_mp(matched_cameras, verkada_list)
+        retention_days = self.retention.get()
+
+        # Calculate storage requirements
+        low_storage = calculate_low_mp_storage(low_mp_count, retention_days)
+        high_storage = calculate_4k_storage(high_mp_count, retention_days)
+        total_storage = low_storage + high_storage
+
+        # Call the recommend_connectors function
+        recommend_connectors(
+            change=True,
+            retention=retention_days,
+            camera_dataframe=matched_cameras,
+            verkada_camera_list=verkada_list,
+            memory=self.memory,
+        )
+
+        # Retrieve recommendations and excess channels
+        recommendations = self.memory.get_recommendations()
+        excess_channels = self.memory.get_excess_channels()
+
+        # Display the recommendations
+        self.recommendation_text.config(state=NORMAL)
+        self.recommendation_text.delete(1.0, END)
+
+        if recommendations:
+            rec_text = "Recommended Command Connectors:\n"
+            rec_text += "\n".join([conn["name"] for conn in recommendations])
+            rec_text += f"\n\nExcess Channels: {excess_channels}"
+            self.recommendation_text.insert(END, rec_text)
+        else:
+            self.recommendation_text.insert(END, "No recommendations available.")
+
+        self.recommendation_text.config(state=DISABLED)
+
+    def toggle_recommendation_visibility(self):
+        if self.recommendation_enabled.get():
+            self.retention_frame.pack(side=LEFT)
+            self.recommendation_frame.pack(fill=X, pady=(10, 0))
+        else:
+            self.retention_frame.pack_forget()
+            self.recommendation_frame.pack_forget()
+        self.change_detected()
 
     def toggle_change(self):
         log.debug(
