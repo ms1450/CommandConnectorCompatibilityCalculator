@@ -137,15 +137,15 @@ class CameraCompatibilityApp:
             state="disabled",  # Initially disabled until a file is selected
             style="RunButton.TButton",
         )
+        self.status_label = ttk.Label(  # Label to display status messages
+            self.main_frame, text="", font=("Helvetica", 14, "italic")
+        )
         self.result_frame = (
             self._create_result_frame()
         )  # Frame for displaying results
         self.details_frame = (
             self._create_details_frame()
         )  # Frame for displaying additional details
-        self.status_label = ttk.Label(  # Label to display status messages
-            self.main_frame, text="", font=("Helvetica", 14, "italic")
-        )
         self.recommendation_frame = (
             self._create_recommendation_frame()
         )  # Frame for displaying recommendations
@@ -276,10 +276,9 @@ class CameraCompatibilityApp:
         self.file_frame.pack(fill=X, pady=(0, 10))
         self.options_frame.pack(fill=X, pady=(0, 10))
         self.run_button.pack(fill=X, pady=(0, 10))
+        self.status_label.pack(fill=X, pady=(10, 0))
         self.result_frame.pack(fill=BOTH, expand=True)
         self.details_frame.pack(fill=X, pady=(10, 0))
-        # self.recommendation_frame.pack(fill=X, pady=(10, 0))  # Initially not packed
-        self.status_label.pack(fill=X, pady=(10, 0))
 
     def _configure_drag_and_drop(self):
         """Configures drag-and-drop functionality for file selection."""
@@ -551,7 +550,6 @@ class CameraCompatibilityApp:
         else:
             self.retention_frame.pack_forget()
             self.recommendation_frame.pack_forget()
-        self.change_detected()
 
     def toggle_change(self):
         """Toggles the change detection flag."""
