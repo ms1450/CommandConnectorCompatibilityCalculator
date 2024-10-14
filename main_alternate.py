@@ -55,9 +55,9 @@ SELECT_CSV_TEXT = "Select CSV"
 RUN_CHECK_TEXT = "Run Check"
 ERROR_NO_FILE = "Error: No File Selected."
 PROCESSING_TEXT = "Processing... Please Wait"
-COMPLETED_TEXT = "Completed."
-ERROR_PROCESSING = "Error: Could not process file."
-DEFAULT_FILE_STATUS = "No File Selected."
+COMPLETED_TEXT = "Completed"
+ERROR_PROCESSING = "Error: Could not process file"
+DEFAULT_FILE_STATUS = "No File Selected"
 DETAILS_LABEL = "Additional Details"
 
 
@@ -199,7 +199,7 @@ class CameraCompatibilityApp:
         # Checkbox to enable/disable recommendations
         self.recommendation_checkbox = ttk.Checkbutton(
             options_frame,
-            text="Recommend Command Connectors",
+            text="Recommend CCs",
             variable=self.recommendation_enabled,
             command=self.toggle_recommendation_visibility,  # Change visibility when checkbox is toggled
         )
