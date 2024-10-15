@@ -185,16 +185,23 @@ def get_camera_count(
 
 
 def get_camera_match(
-    customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
+    customer_list: pd.DataFrame,
+    verkada_cameras: List[CompatibleModel],
+    model_column: Optional[Union[int, str]] = None,
 ) -> pd.DataFrame:
     """Match customer cameras against a list of known Verkada cameras.
 
     Args:
         customer_list (pd.DataFrame): The list of known cameras.
         verkada_cameras (List[CompatibleModel]): The list of known cameras.
+        model_column (Optional[int]): The column index of the known camera model.
 
     Returns:
         pd.DataFrame: The matched cameras with count.
+
+    Raises:
+        ValueError: If the specified column index is out of bounds.
+        KeyError: If the specified column name is not found in the DataFrame.
     """
 
     def match_camera(camera):
@@ -244,9 +251,26 @@ def get_camera_match(
             }
         )
 
-    camera_column = identify_model_column_name(customer_list, verkada_cameras)
-    log.info("Highest Scoring Camera Column: '%s'", camera_column)
-    model_data = customer_list[camera_column]
+    if model_column is None:
+        camera_column = identify_model_column_name(
+            customer_list, verkada_cameras
+        )
+        log.info("Automatically identified Camera Column: '%s'", camera_column)
+    else:
+        camera_column = model_column
+        log.info("Using specified Camera Column: '%s'", camera_column)
+        # Handle both string and integer column identifiers with error checking
+    if isinstance(camera_column, int):
+        if camera_column < 0 or camera_column >= len(customer_list.columns):
+            raise ValueError(
+                f"Column index {camera_column} is out of bounds for DataFrame "
+                f"with {len(customer_list.columns)} columns"
+            )
+        model_data = customer_list.iloc[:, camera_column]
+    else:
+        if camera_column not in customer_list.columns:
+            raise KeyError(f"Column '{camera_column}' not found in DataFrame")
+        model_data = customer_list[camera_column]
     verkada_cameras_list = get_camera_set(verkada_cameras)
     result = model_data.apply(match_camera)
 

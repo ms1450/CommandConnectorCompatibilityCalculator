@@ -37,8 +37,6 @@ def print_results(
             the input has occurred and calculations need to be ran again.
         results (pd.DataFrame): Dataframe containing results of each camera.
         verkada_list (List[CompatibleModel]): List of CompatibleModel objects
-        text_widget (Text): The text widget where the table will be
-            displayed.
         memory (MemoryStorage): Class to store frequently accessed variables.
 
     Returns:
@@ -91,6 +89,7 @@ def print_results(
         table = tabulate(output, headers=headers, tablefmt="fancy_grid")
         memory.set_compatible_cameras(table)
         log.info("Compatible cameras set in memory")
+        print(table)
 
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
