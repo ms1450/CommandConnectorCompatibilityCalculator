@@ -42,6 +42,34 @@ class MemoryStorage:
         self.recommendations = None
         self.excess_channels = None
         self.compatible = None
+        self.results = None
+
+    def set_results(self, results):
+        """Sets the results of the camera match algorithm
+
+        This method sets the results of the camera match algorithm.
+
+        Args:
+            self: The instance of the class.
+            results: The pandas dataframe results of the camera match algorithm.
+
+        Returns:
+            None
+        """
+        self.results = results
+
+    def get_results(self):
+        """Gets the results of the dataframe of the camera match algorithm.
+
+        This method returns the results of the camera match algorithm.
+
+        Args:
+            self: The instance of the class.
+
+        Return:
+            The results of the memory management operations.
+        """
+        return self.results
 
     def set_recommendations(self, recommendations):
         """Sets the recommendations for memory management.
@@ -60,15 +88,15 @@ class MemoryStorage:
         self.recommendations = recommendations
 
     def get_recommendations(self):
-        """Gets the recommendations for memory management.
+        """Gets the dataframe for memory management.
 
-        This method returns the recommendations for memory management.
+        This method returns the dataframe of camera matches.
 
         Args:
             self: The instance of the class.
 
         Returns:
-            The recommendations for memory management.
+            The dataframe containing the results.
         """
         return self.recommendations
 

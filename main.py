@@ -44,6 +44,7 @@ from app.formatting import (
     get_manufacturer_set,
     sanitize_customer_data,
     list_verkada_camera_details,
+    export_to_csv,
 )
 from app.memory_management import MemoryStorage
 from app.recommend import recommend_connectors
@@ -52,6 +53,7 @@ init(autoreset=True)
 
 SELECT_CSV_TEXT = "Select CSV"
 RUN_CHECK_TEXT = "Run Check"
+EXPORT_TEXT = "Export CSV"
 ERROR_NO_FILE = "Error: No File Selected."
 PROCESSING_TEXT = "Processing... Please Wait"
 COMPLETED_TEXT = "Completed"
@@ -135,7 +137,15 @@ class CameraCompatibilityApp:
         ).pack(side=LEFT, fill=X, expand=True)
         ttk.Button(
             file_frame, text=SELECT_CSV_TEXT, command=self.select_file
-        ).pack(side=RIGHT)
+        ).pack(side=LEFT)
+        self.ui_elements["export_button"] = ttk.Button(
+            file_frame,
+            text=EXPORT_TEXT,
+            command=self.export_results,
+            state="disabled",
+            style="Export.TButton",
+        )
+        self.ui_elements["export_button"].pack(side=RIGHT)
         return file_frame
 
     def _create_options_frame(self) -> Frame:
@@ -148,7 +158,7 @@ class CameraCompatibilityApp:
             self.ui_elements["retention_frame"],
             text="Retention Period (days):",
             font=("Helvetica", 14),
-        ).pack(side=LEFT, padx=(0, 10))
+        ).pack(side=LEFT, padx=(10, 10))
         retention_spinbox = ttk.Spinbox(
             self.ui_elements["retention_frame"],
             from_=30,
@@ -289,6 +299,14 @@ class CameraCompatibilityApp:
         )
 
     @time_function
+    def export_results(self):
+        """Exports results to a CSV file."""
+        cameras_dataframe = self.memory.get_results()
+        files = [("CSV files", "*.csv"), ("All Files", "*.*")]
+        filepath = filedialog.asksaveasfilename(filetypes=files)
+        export_to_csv(cameras_dataframe, filepath)
+
+    @time_function
     def run_check(self):
         """Runs the compatibility check when the 'Run Check' button is clicked."""
         if not self.customer_file_path:
@@ -331,6 +349,12 @@ class CameraCompatibilityApp:
             )
 
             if matched_cameras is not None:
+
+                self.memory.set_results(matched_cameras)
+                self.ui_elements["export_button"].config(
+                    state="normal", style="Export.TButton"
+                )
+
                 self._display_results(
                     matched_cameras, verkada_compatibility_list
                 )

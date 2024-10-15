@@ -324,6 +324,17 @@ def print_connector_recommendation(recommendations: List[Connector]):
         )
     )
 
+
+def export_to_csv(df: pd.DataFrame, path: str) -> None:
+    """Export a dataframe to a CSV file.
+
+    Args:
+        df (pd.DataFrame): The dataframe to export.
+        path (str): The path to export the dataframe to.
+    """
+    if path is not None and path != "":
+        df.to_csv(path, index=False)
+
     # NOTE: Uncomment to output to CSV
     # pd.DataFrame(device_count).to_csv("connector_recommendations.csv")
 
