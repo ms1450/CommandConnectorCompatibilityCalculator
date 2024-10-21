@@ -4,21 +4,39 @@ Purpose: The contents of this file are to perform formatting for the
     customer camera file.
 """
 
+# pylint: disable=ungrouped-imports
+
 import os
 import re
 from collections import defaultdict
+from subprocess import check_call
+from sys import executable
 from typing import Dict, List, Optional, Set
 
-import pandas as pd
-import colorama
-from colorama import Fore, Style
-from nltk.corpus import words
-from nltk.data import find
-from nltk.downloader import download
-from pandas import Series
-from tabulate import tabulate
+try:
+    import pandas as pd
+    import colorama
+    from colorama import Fore, Style
+    from nltk.corpus import words
+    from nltk.data import find
+    from nltk.downloader import download
+    from pandas import Series
+    from tabulate import tabulate
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import pandas as pd
+    import colorama
+    from colorama import Fore, Style
+    from nltk.corpus import words
+    from nltk.data import find
+    from nltk.downloader import download
+    from pandas import Series
+    from tabulate import tabulate
 
-from app import CompatibleModel, Connector
+
+from app import CompatibleModel, Connector, logging_decorator, time_function
 
 NLTK_DATA_PATH = "./misc/nltk_data"
 
@@ -55,6 +73,7 @@ def get_manufacturer_set(verkada_list: List[CompatibleModel]) -> Set[str]:
     return {""}
 
 
+@logging_decorator
 def find_verkada_camera(
     verkada_model: str, verkada_camera_list: List[CompatibleModel]
 ) -> Optional[CompatibleModel]:
@@ -116,6 +135,7 @@ def list_verkada_camera_details(
     )
 
 
+@time_function
 def sanitize_customer_data(
     customer_list: pd.DataFrame, dictionary: Set[str]
 ) -> pd.DataFrame:
@@ -263,6 +283,7 @@ def tabulate_data(data: List[List[str]]) -> None:
     print(tabulate(combined_data, headers=headers, tablefmt="pipe"))
 
 
+@logging_decorator
 def print_connector_recommendation(recommendations: List[Connector]):
     """
     Print a formatted table of device recommendations and their counts.
@@ -302,6 +323,17 @@ def print_connector_recommendation(recommendations: List[Connector]):
             tablefmt="rounded_outline",
         )
     )
+
+
+def export_to_csv(df: pd.DataFrame, path: str) -> None:
+    """Export a dataframe to a CSV file.
+
+    Args:
+        df (pd.DataFrame): The dataframe to export.
+        path (str): The path to export the dataframe to.
+    """
+    if path is not None and path != "":
+        df.to_csv(path, index=False)
 
     # NOTE: Uncomment to output to CSV
     # pd.DataFrame(device_count).to_csv("connector_recommendations.csv")

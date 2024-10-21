@@ -3,15 +3,31 @@ Author: Ian Young
 Purpose: Recommend a Command Connector based on a given site of criteria.
 """
 
+# pylint: disable=ungrouped-imports
+
 # Standard library imports
+from subprocess import check_call
+from sys import executable
 from typing import List, Optional
 
 # Third-party library imports
-import colorama
-import pandas as pd
-from colorama import Fore, Style
+try:
+    import pandas as pd
+    from colorama import init, Fore, Style
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import pandas as pd
+    from colorama import init, Fore, Style
 
-from app import CompatibleModel, Connector, log
+from app import (
+    CompatibleModel,
+    Connector,
+    log,
+    time_function,
+    logging_decorator,
+)
 
 # Local/application-specific imports
 from app.calculations import (
@@ -20,11 +36,9 @@ from app.calculations import (
     calculate_low_mp_storage,
     count_mp,
 )
-from app.formatting import print_connector_recommendation
+from app.memory_management import MemoryStorage
 
-colorama.init(autoreset=True)  # Initialize colorized output
-
-RETENTION = 30  # Required storage in days
+init(autoreset=True)  # Initialize colorized output
 
 
 # Ensure the dictionaries match the `Connector` TypedDict structure
@@ -75,6 +89,7 @@ REVERSED_COMMAND_CONNECTORS: List[Connector] = sorted(
 )
 
 
+@time_function
 def get_connectors(
     channels: int,
     storage: float,
@@ -167,7 +182,12 @@ def get_connectors(
     return recommendation  # Return the list of selected connectors
 
 
-def recommend_connector(low_channels: int, high_channels: int, storage: float):
+def recommend_connector(
+    low_channels: int,
+    high_channels: int,
+    storage: float,
+    memory: MemoryStorage,
+):
     """Formats data and calls recursive function.
 
     Recommend a connector based on the specified low and high channel
@@ -178,6 +198,7 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
         low_channels (int): The number of low channels required.
         high_channels (int): The number of high channels required.
         storage (float): The amount of storage available.
+        memory (MemoryStorage): Class to store frequently accessed variables.
 
     Returns:
         None: This function does not return a value but calls another
@@ -191,19 +212,29 @@ def recommend_connector(low_channels: int, high_channels: int, storage: float):
     total_required_channels = low_channels + high_channels * 2
     log.info("Total channels needed: %i", total_required_channels)
     recommendations = get_connectors(total_required_channels, storage)
-    print_connector_recommendation(recommendations)
     excess_channels = calculate_excess_channels(
         total_required_channels, recommendations
     )
-    print(
-        f"{Fore.LIGHTMAGENTA_EX}Excess channels: {excess_channels}{Style.RESET_ALL}"
+    memory.set_recommendations(recommendations)
+    memory.set_excess_channels(excess_channels)
+    log.debug(recommendations)
+    log.debug(
+        "%sExcess channels: %d%s",
+        Fore.LIGHTMAGENTA_EX,
+        excess_channels,
+        Style.RESET_ALL,
     )
     # print(", ".join(get_connectors(total_required_channels, storage)))
 
 
+@logging_decorator
 def recommend_connectors(
-    camera_dataframe: pd.DataFrame, verkada_camera_list: List[CompatibleModel]
-):
+    change: bool,
+    retention: int,
+    camera_dataframe: pd.DataFrame,
+    verkada_camera_list: List[CompatibleModel],
+    memory: MemoryStorage,
+) -> None:
     """Driver function to gather all required recursive compute variables.
 
     Generate connector recommendations based on customer camera data and
@@ -212,8 +243,17 @@ def recommend_connectors(
     channels.
 
     Args:
-        camera_dataframe (pd.DataFrame): A dataframe containing customer cameras
-        verkada_camera_list (List[CompatibleModel]): A list of verkada cameras
+        change (bool): A Boolean value that indicates whether a change to
+            the input has been detected and calculations need to be ran
+            again.
+        retention (int): The days of required retention for the command
+            connector
+        camera_dataframe (pd.DataFrame): A dataframe containing customer
+            cameras.
+        verkada_camera_list (List[CompatibleModel]): A list of verkada
+            cameras.
+        memory (MemoryStorage): Class to store frequently accessed
+            variables.
 
     Returns:
         None: This function does not return a value but triggers the
@@ -222,10 +262,15 @@ def recommend_connectors(
     Examples:
         >>> recommend_connectors(camera_dataframe)
     """
-    low_mp_count, high_mp_count = count_mp(
-        camera_dataframe, verkada_camera_list
-    )
-    low_storage = calculate_low_mp_storage(low_mp_count, RETENTION)
-    high_storage = calculate_4k_storage(high_mp_count, RETENTION)
-    total_storage = low_storage + high_storage
-    recommend_connector(low_mp_count, high_mp_count, total_storage)
+    run_calc = (
+        not memory.has_recommendations() and not memory.has_excess_channels()
+    ) or change
+    log.debug("Run calculations: %s", run_calc)
+    if run_calc:
+        low_mp_count, high_mp_count = count_mp(
+            camera_dataframe, verkada_camera_list
+        )
+        low_storage = calculate_low_mp_storage(low_mp_count, retention)
+        high_storage = calculate_4k_storage(high_mp_count, retention)
+        total_storage = low_storage + high_storage
+        recommend_connector(low_mp_count, high_mp_count, total_storage, memory)

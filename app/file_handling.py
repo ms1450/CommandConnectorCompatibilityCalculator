@@ -5,10 +5,13 @@ Purpose: The contents of this file are to perform file handling.
 """
 
 from typing import List
+
 import pandas as pd
-from app import CompatibleModel
+
+from app import CompatibleModel, time_function
 
 
+@time_function
 def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
     """Parse a CSV file to create a list of compatible models.
 
@@ -34,6 +37,7 @@ def parse_hardware_compatibility_list(filename: str) -> List[CompatibleModel]:
     return compatible_models
 
 
+@time_function
 def parse_customer_list(filename: str) -> pd.DataFrame:
     """Read a CSV file and transpose its rows into columns.
 

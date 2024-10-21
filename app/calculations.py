@@ -6,24 +6,44 @@ Purpose: The contents of this file are to perform various calculations
     a deal.
 """
 
+# pylint: disable=ungrouped-imports
+
 # Standard library imports
 import re
+from subprocess import check_call
+from sys import executable
 from typing import Dict, List, Optional, Union
 
 # Third-party library imports
-import colorama
-import numpy as np
-import pandas as pd
-from thefuzz import fuzz, process
+try:
+    import colorama
+    import numpy as np
+    import pandas as pd
+    from thefuzz import fuzz, process
+except ImportError as e:
+    package_name = str(e).split()[-1]
+    check_call([executable, "-m", "pip", "install", package_name])
+    # Import again after installation
+    import colorama
+    import numpy as np
+    import pandas as pd
+    from thefuzz import fuzz, process
 
 # Local/application-specific imports
 from app.formatting import get_camera_set, find_verkada_camera
-from app import log, CompatibleModel, Connector
+from app import (
+    log,
+    logging_decorator,
+    time_function,
+    CompatibleModel,
+    Connector,
+)
 
 # Initialize colorama
 colorama.init(autoreset=True)
 
 
+@time_function
 def identify_model_column_name(
     customer_list: pd.DataFrame, verkada_cameras: List[CompatibleModel]
 ) -> Optional[Union[int, str]]:
@@ -95,6 +115,7 @@ def identify_model_column_name(
     return None
 
 
+@logging_decorator
 def identify_count_column(customer_list: pd.DataFrame) -> Optional[int]:
     """Identify the column with the number of cameras in the customer list
 
@@ -238,7 +259,6 @@ def get_camera_match(
     else:
         camera_column = model_column
         log.info("Using specified Camera Column: '%s'", camera_column)
-
     # Handle both string and integer column identifiers with error checking
     if isinstance(camera_column, int):
         if camera_column < 0 or camera_column >= len(customer_list.columns):
@@ -256,13 +276,29 @@ def get_camera_match(
 
     result = get_camera_count(customer_list, result)
     log.info("First 10 Matched Results: \n '%s'", result.head(10).to_string())
-    return result
+
+    # Define the order for sorting match types
+    match_order = {
+        "exact": 1,
+        "identified": 2,
+        "potential": 3,
+        "unsupported": 4,
+    }
+
+    # Sort the results by match type using the defined order
+    result["match_type_order"] = result["match_type"].map(match_order)
+    sorted_result = result.sort_values(by="match_type_order").drop(
+        columns=["match_type_order"]
+    )
+
+    return sorted_result
 
 
+@time_function
 def compile_camera_mp_channels(
     verkada_camera_list: List[CompatibleModel],
 ) -> List[CompatibleModel]:
-    """Compile camera models using multiprocessing.
+    """Compile camera models.
 
     Args:
         verkada_camera_list (List[CompatibleModel]): The list of known cameras.
@@ -526,6 +562,7 @@ def count_mp(
     return [low_count, high_count]
 
 
+@logging_decorator
 def calculate_excess_channels(channels: int, connectors: List[Connector]):
     """
     Calculate the excess number of channels based on the provided
