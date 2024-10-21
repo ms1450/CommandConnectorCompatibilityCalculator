@@ -228,12 +228,7 @@ class CameraCompatibilityApp:
         ttk.Label(
             details_frame, text=DETAILS_LABEL, font=("Helvetica", 14)
         ).pack(anchor="w")
-        self.ui_elements["details_text"] = Text(
-            details_frame, wrap=WORD, height=6, font=("Helvetica", 14)
-        )
-        self.ui_elements["details_text"].config(state=DISABLED)
-        self.ui_elements["details_text"].pack(fill=BOTH, expand=True, pady=5)
-        return details_frame
+        return self.add_text(details_frame, 6, "details_text")
 
     def _create_recommendation_frame(self) -> Frame:
         """Creates the frame to display recommendations for connectors."""
@@ -246,14 +241,30 @@ class CameraCompatibilityApp:
             font=("Helvetica", 14, "bold"),
         ).pack(anchor="w")
 
-        self.ui_elements["recommendation_text"] = Text(
-            recommendation_frame, wrap=WORD, height=4, font=("Helvetica", 14)
+        return self.add_text(recommendation_frame, 4, "recommendation_text")
+
+    def add_text(self, frame, height, text):
+        """Add a text element to the specified frame.
+
+        This method creates a text widget with specified height and font,
+        adds it to the given frame, and configures it to be non-editable.
+        The text widget is packed into the frame with specific padding.
+
+        Args:
+            frame: The frame to which the text widget will be added.
+            height: The height of the text widget.
+            text: The identifier for the text widget, used as a key in the ui_elements dictionary.
+
+        Returns:
+            The frame with the added text widget.
+        """
+
+        self.ui_elements[text] = Text(
+            frame, wrap=WORD, height=height, font=("Helvetica", 14)
         )
-        self.ui_elements["recommendation_text"].config(state=DISABLED)
-        self.ui_elements["recommendation_text"].pack(
-            fill=BOTH, expand=True, pady=5
-        )
-        return recommendation_frame
+        self.ui_elements[text].config(state=DISABLED)
+        self.ui_elements[text].pack(fill=BOTH, expand=True, pady=5)
+        return frame
 
     def _setup_layout(self):
         """Arranges the layout of the main UI frames."""
@@ -278,10 +289,9 @@ class CameraCompatibilityApp:
     def select_file(self):
         """Opens a file dialog for selecting a customer CSV file."""
         self.change_detected()
-        file_path = filedialog.askopenfilename(
+        if file_path := filedialog.askopenfilename(
             filetypes=[("CSV files", "*.csv")]
-        )
-        if file_path:
+        ):
             self._update_file_selection(file_path)
 
     def _update_file_selection(self, file_selection: str):
@@ -473,14 +483,12 @@ class CameraCompatibilityApp:
             "exact": "exact",
             "identified": "identified",
         }
-        return tag_map.get(match_type, None)
+        return tag_map.get(match_type)
 
     def on_tree_click(self, event):
         """Handles clicks on the Treeview rows to display additional camera details."""
-        item = self.ui_elements["treeview"].identify_row(event.y)
-        if item:
-            details = self.ui_elements["item_details"].get(item)
-            if details:
+        if item := self.ui_elements["treeview"].identify_row(event.y):
+            if details := self.ui_elements["item_details"].get(item):
                 self.display_details(details)
 
     def display_details(self, details):
@@ -518,8 +526,9 @@ class CameraCompatibilityApp:
         self.ui_elements["recommendation_text"].delete(1.0, END)
 
         if recommendations:
-            rec_text = "Recommended Command Connectors:\n"
-            rec_text += "\n".join([conn["name"] for conn in recommendations])
+            rec_text = "Recommended Command Connectors:\n" + "\n".join(
+                [conn["name"] for conn in recommendations]
+            )
             rec_text += f"\n\nExcess Channels: {excess_channels}"
             self.ui_elements["recommendation_text"].insert(END, rec_text)
         else:
