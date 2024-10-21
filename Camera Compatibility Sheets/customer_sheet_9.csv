@@ -2,3 +2,6 @@ model,#,count,notes
 M4318-PLVE a,1,4,asdad
 M4318-PLVE b,2,2,asdsad
 M4318-PLVE c,3,8,a sdasd
+Test ABZ,2,1,unsupported camera
+M4318-dLVE,2,1,potential camera
+asda M4318-PLVE asd,2,1,identified camera

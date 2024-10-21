@@ -346,7 +346,6 @@ class CameraCompatibilityApp:
                         font=("Helvetica", 14),
                     )
                     return
-
             verkada_compatibility_list = compile_camera_mp_channels(
                 parse_hardware_compatibility_list(compatibility_file)
             )
@@ -359,7 +358,6 @@ class CameraCompatibilityApp:
             )
 
             if matched_cameras is not None:
-
                 self.memory.set_results(matched_cameras)
                 self.ui_elements["export_button"].config(
                     state="normal", style="Export.TButton"
@@ -373,7 +371,6 @@ class CameraCompatibilityApp:
                     foreground="#ccffcc",
                     font=("Helvetica", 14),
                 )
-
                 if self.recommendation_enabled.get():
                     self._perform_recommendations(
                         matched_cameras, verkada_compatibility_list
