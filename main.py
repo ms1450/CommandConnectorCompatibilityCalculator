@@ -54,10 +54,10 @@ init(autoreset=True)
 SELECT_CSV_TEXT = "Select CSV"
 RUN_CHECK_TEXT = "Run Check"
 EXPORT_TEXT = "Export CSV"
-ERROR_NO_FILE = "Error: No File Selected."
+ERROR_NO_FILE = "Error: No File Selected"
 PROCESSING_TEXT = "Processing... Please Wait"
 COMPLETED_TEXT = "Completed"
-ERROR_PROCESSING = "Error: Could not process file"
+ERROR_PROCESSING = "Error: Could not process File"
 DEFAULT_FILE_STATUS = "No File Selected"
 DETAILS_LABEL = "Additional Details"
 
@@ -90,7 +90,7 @@ class CameraCompatibilityApp:
     def _setup_ui(self):
         """Sets up the main UI elements for the application."""
         self.root.title("Command Connector Compatibility Calculator")
-        self.root.geometry("900x700")
+        self.root.geometry("1000x1000")
 
         style = ThemedStyle(self.root)
         style.set_theme("equilux")
