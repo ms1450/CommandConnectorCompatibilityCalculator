@@ -25,11 +25,11 @@ from tkinter import (
     DISABLED,
     NORMAL,
 )
-from tkinter import ttk
+from tkinter import ttk, Tk, TclError
 import pandas as pd
 from colorama import init
 from tkinterdnd2 import DND_FILES, TkinterDnD
-from ttkthemes import ThemedStyle
+# from ttkthemes import ThemedStyle
 
 from app import log, time_function, CompatibleModel
 from app.calculations import (
@@ -92,8 +92,8 @@ class CameraCompatibilityApp:
         self.root.title("Command Connector Compatibility Calculator")
         self.root.geometry("1000x1000")
 
-        style = ThemedStyle(self.root)
-        style.set_theme("equilux")
+        style = Tk(self.root)
+        style.theme_use("clam")
         style.configure(
             "RunButton.TButton",
             background="#fffcff",
@@ -564,6 +564,9 @@ class CameraCompatibilityApp:
 
 
 if __name__ == "__main__":
-    root = TkinterDnD.Tk()
-    app = CameraCompatibilityApp(root)
-    root.mainloop()
+    try:
+        root = TkinterDnD.Tk()
+        app = CameraCompatibilityApp(root)
+        root.mainloop()
+    except TclError:
+        print("Exiting. No display detected.")
