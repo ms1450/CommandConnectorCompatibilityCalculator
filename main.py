@@ -25,11 +25,10 @@ from tkinter import (
     DISABLED,
     NORMAL,
 )
-from tkinter import ttk, Tk, TclError
+from tkinter import ttk, TclError
 import pandas as pd
 from colorama import init
 from tkinterdnd2 import DND_FILES, TkinterDnD
-# from ttkthemes import ThemedStyle
 
 from app import log, time_function, CompatibleModel
 from app.calculations import (
