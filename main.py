@@ -92,7 +92,8 @@ class CameraCompatibilityApp:
         self.root.title("Command Connector Compatibility Calculator")
         self.root.geometry("1000x1000")
 
-        style = Tk(self.root)
+        style = ttk.Style(self.root)
+        # clam, alt, default, classic
         style.theme_use("clam")
         style.configure(
             "RunButton.TButton",
