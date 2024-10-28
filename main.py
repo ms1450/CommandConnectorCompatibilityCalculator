@@ -278,10 +278,9 @@ class CameraCompatibilityApp:
     def select_file(self):
         """Opens a file dialog for selecting a customer CSV file."""
         self.change_detected()
-        file_path = filedialog.askopenfilename(
+        if file_path := filedialog.askopenfilename(
             filetypes=[("CSV files", "*.csv")]
-        )
-        if file_path:
+        ):
             self._update_file_selection(file_path)
 
     def _update_file_selection(self, file_selection: str):
@@ -473,14 +472,12 @@ class CameraCompatibilityApp:
             "exact": "exact",
             "identified": "identified",
         }
-        return tag_map.get(match_type, None)
+        return tag_map.get(match_type)
 
     def on_tree_click(self, event):
         """Handles clicks on the Treeview rows to display additional camera details."""
-        item = self.ui_elements["treeview"].identify_row(event.y)
-        if item:
-            details = self.ui_elements["item_details"].get(item)
-            if details:
+        if item := self.ui_elements["treeview"].identify_row(event.y):
+            if details := self.ui_elements["item_details"].get(item):
                 self.display_details(details)
 
     def display_details(self, details):
@@ -518,8 +515,9 @@ class CameraCompatibilityApp:
         self.ui_elements["recommendation_text"].delete(1.0, END)
 
         if recommendations:
-            rec_text = "Recommended Command Connectors:\n"
-            rec_text += "\n".join([conn["name"] for conn in recommendations])
+            rec_text = "Recommended Command Connectors:\n" + "\n".join(
+                [conn["name"] for conn in recommendations]
+            )
             rec_text += f"\n\nExcess Channels: {excess_channels}"
             self.ui_elements["recommendation_text"].insert(END, rec_text)
         else:
