@@ -78,13 +78,13 @@ def main(customer_model_filepath, camera_column):
         print_results(
             True, matched_cameras, verkada_compatibility_list, memory
         )
-        #recommend_connectors(
-        #    True,
-        #    RETENTION,
-        #    matched_cameras,
-        #    verkada_compatibility_list,
-        #    memory,
-        #)
+        recommend_connectors(
+            True,
+            RETENTION,
+            matched_cameras,
+            verkada_compatibility_list,
+            memory,
+        )
     else:
         log.critical(
             "%sCould not identify model column.%s", Fore.RED, Style.RESET_ALL
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     # Modify the file path
     CSV_FILEPATH = "Camera Compatibility Sheets/customer_sheet_11.csv"
     # [Optional] Modify the column number to force a specific model column number
-    MODEL_COLUMN = 3
+    MODEL_COLUMN = None
     main(CSV_FILEPATH, MODEL_COLUMN)
