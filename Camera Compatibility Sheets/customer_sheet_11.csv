@@ -1,4 +1,4 @@
-﻿MAC Address,Status,Address,Model,Firmware,DHCP,HTTPS,Server,Warranty expiration,Host Name,IEEE 802.1X,Tags,UPnP Friendly Name,Warranty start
+MAC Address,Status,Address,Model,Firmware,DHCP,HTTPS,Server,Warranty expiration,Host Name,IEEE 802.1X,Tags,UPnP Friendly Name,Warranty start
 ACCC8E02DBAE,OK,10.1.34.14:443,AXIS P3707-PE,6.50.5.18,No,Enabled,MSMGMT1,9/11/2019 (3Y),,Disabled,,AXIS P3707-PE - ACCC8E02DBAE,9/11/2016
 ACCC8E02DBBA,OK,10.1.34.12:443,AXIS P3707-PE,6.50.5.18,No,Enabled,MSMGMT1,9/11/2019 (3Y),,Disabled,,AXIS P3707-PE - ACCC8E02DBBA,9/11/2016
 ACCC8E02DBD0,Not accessible,10.1.34.24:443,AXIS P3707-PE,6.50.5.18,No,Enabled,MSMGMT1,9/11/2019 (3Y),,Disabled,,AXIS P3707-PE - ACCC8E02DBD0,9/11/2016

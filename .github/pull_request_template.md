@@ -27,6 +27,9 @@ Please mark which files the script has been able to run against without passing 
 - [ ] [customer_sheet_6.csv](https://github.com/ms1450/CommandConnectorCompatibilityCalculator/blob/main/Camera%20Compatibility%20Sheets/customer_sheet_6.csv)
 - [ ] [customer_sheet_7.csv](https://github.com/ms1450/CommandConnectorCompatibilityCalculator/blob/main/Camera%20Compatibility%20Sheets/customer_sheet_7.csv)
 - [ ] [customer_sheet_8.csv](https://github.com/ms1450/CommandConnectorCompatibilityCalculator/blob/main/Camera%20Compatibility%20Sheets/customer_sheet_8.csv)
+- [ ] [customer_sheet_9.csv](https://github.com/ms1450/CommandConnectorCompatibilityCalculator/blob/main/Camera%20Compatibility%20Sheets/customer_sheet_9.csv)
+- [ ] [customer_sheet_10.csv](https://github.com/ms1450/CommandConnectorCompatibilityCalculator/blob/main/Camera%20Compatibility%20Sheets/customer_sheet_10.csv)
+- [ ] [customer_sheet_11.csv](https://github.com/ms1450/CommandConnectorCompatibilityCalculator/blob/main/Camera%20Compatibility%20Sheets/customer_sheet_11.csv)
 
 ## Checklist
 
