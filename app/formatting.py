@@ -18,7 +18,6 @@ try:
     import colorama
     from colorama import Fore, Style
     from nltk.corpus import words
-    from nltk.data import find
     from nltk.downloader import download
     from pandas import Series
     from tabulate import tabulate
@@ -30,13 +29,12 @@ except ImportError as e:
     import colorama
     from colorama import Fore, Style
     from nltk.corpus import words
-    from nltk.data import find
     from nltk.downloader import download
     from pandas import Series
     from tabulate import tabulate
 
 
-from app import CompatibleModel, Connector, logging_decorator, time_function
+from app import CompatibleModel, Connector, logging_decorator
 
 NLTK_DATA_PATH = "./misc/nltk_data"
 
@@ -135,107 +133,142 @@ def list_verkada_camera_details(
     )
 
 
-@time_function
-def sanitize_customer_data(
-    customer_list: pd.DataFrame, dictionary: Set[str]
-) -> pd.DataFrame:
-    """Sanitize Customer List: remove whitespace, IPs, MACs, special
-    chars, and serial number columns. Preserves duplicate camera name entries.
-
-    Args:
-        customer_list (pd.DataFrame): Customer List.
-        dictionary (Set[str]): Set of camera names.
-
-    Returns:
-        pd.DataFrame: Sanitized Customer List.
-    """
-
+def ensure_nltk_words_loaded():
+    """Ensure the NLTK words corpus is downloaded and available."""
     try:
         if not os.path.isdir(NLTK_DATA_PATH):
             download("words", download_dir=NLTK_DATA_PATH)
         else:
-            find("corpora/words")
+            words.ensure_loaded()
     except LookupError:
         download("words")
 
-    # Handle missing values (replace with empty strings)
+
+def prepare_customer_list(customer_list: pd.DataFrame) -> pd.DataFrame:
+    """Handle missing values and strip whitespaces."""
     customer_list = customer_list.fillna("")
-    # Remove leading/trailing whitespaces
-    customer_list = customer_list.astype(str).apply(lambda x: x.str.strip())
+    return customer_list.astype(str).apply(lambda x: x.str.strip())
 
-    # Extract english words from NLTK
-    english_words = {word.lower() for word in words.words()}
 
-    # Regex Patterns
-    integer_pattern = r"^[-+]?\d+$"
-    ip_pattern = (
-        r"^((25[0-5]|2[0-4][0-9]|"
-        r"[01]?[0-9][0-9]?)\.){3}(25[0-5]|"
-        r"2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-    )
-    mac_pattern = (
-        r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|"
-        r"^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
-    )
-    special_char_pattern = r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
-    sequential_pattern = r"^#$"  # Updated to match exactly '#'
+def extract_english_words() -> Set[str]:
+    """Extract English words from NLTK corpus."""
+    ensure_nltk_words_loaded()
+    return {word.lower() for word in words.words()}
 
-    def remove_keywords(value: str) -> str:
-        if not value:
-            return value
 
-        word_set = value.split()
+def compile_regex_patterns():
+    """Compile and return the necessary regex patterns."""
+    return {
+        "integer": r"^[-+]?\d+$",
+        "ip": (
+            r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
+            r"(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+            r"(:\d{1,5})?$"
+        ),
+        "mac": (
+            r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|"
+            r"^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$|"
+            r"^[0-9A-Fa-f]{12}$"
+        ),
+        "date": (
+            r"^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/(\d{4})$|"
+            r"^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/(\d{4})$|"
+            r"^\d{4}-(0?[1-9]|1[0-2])-(0?[1-9]|[12][0-9]|3[01])$"
+        ),
+        "special_char": r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$',
+        "sequential": r"^#$",
+    }
 
-        # Check if there's more than one word
-        multiple_words = len(word_set) > 1
 
-        filtered_words = [
-            word
-            for word in word_set
-            if word in dictionary  # Keep camera names
-            or (
-                word.lower()
-                not in english_words  # Remove common English words
-                and not re.match(ip_pattern, word)
-                and not re.match(mac_pattern, word)
-                and not re.match(special_char_pattern, word)
-                and (not multiple_words or not re.match(integer_pattern, word))
+def remove_keywords(
+    value: str, dictionary: Set[str], english_words: Set[str], patterns: dict
+) -> str:
+    """Remove unwanted keywords from a value."""
+    if not value:
+        return value
+
+    word_set = value.split()
+    multiple_words = len(word_set) > 1
+
+    filtered_words = [
+        word
+        for word in word_set
+        if word in dictionary
+        or (
+            word.lower() not in english_words
+            and not any(
+                re.match(pattern, word) for pattern in patterns.values()
             )
-        ]
-        return " ".join(filtered_words)
+            and (not multiple_words or not re.match(patterns["integer"], word))
+        )
+    ]
+    return " ".join(filtered_words)
 
-    # Apply the remove_keywords function to all cells
-    sanitized_df = customer_list.map(remove_keywords)
 
-    # Remove columns containing IP or MAC addresses
-    columns_to_remove = []
-    for column in sanitized_df.columns:
-        if (
-            sanitized_df[column].str.match(ip_pattern).any()
-            or sanitized_df[column].str.match(mac_pattern).any()
-        ):
-            columns_to_remove.append(column)
-
-    # Identify sequential columns (updated logic)
-    sequential_columns = [
+def sanitize_columns(
+    sanitized_df: pd.DataFrame, patterns: dict
+) -> pd.DataFrame:
+    """Remove unwanted columns based on patterns."""
+    columns_to_remove = [
         col
         for col in sanitized_df.columns
-        if re.match(sequential_pattern, col)
+        if any(
+            sanitized_df[col].str.match(pattern).any()
+            for pattern in ["ip", "mac", "date"]
+        )
     ]
 
-    # Remove columns with headers containing 'Serial', 'SN', or 'S/N'
     serial_columns = [
         col
         for col in sanitized_df.columns
         if any(term in col.lower() for term in ["serial", "sn", "s/n"])
     ]
-    columns_to_remove.extend(serial_columns)
-    columns_to_remove.extend(sequential_columns)
-    sanitized_df = sanitized_df.drop(columns=columns_to_remove)
+    sequential_columns = [
+        col
+        for col in sanitized_df.columns
+        if re.match(patterns["sequential"], col)
+    ]
 
-    # Remove empty rows and columns
-    sanitized_df = sanitized_df.dropna(how="all").dropna(axis=1, how="all")
+    sanitized_df = sanitized_df.drop(
+        columns=columns_to_remove + serial_columns + sequential_columns
+    )
     return sanitized_df
+
+
+def remove_duplicates_from_row(row) -> pd.Series:
+    """Remove duplicate values within a row."""
+    seen = set()
+    new_row = [
+        (
+            " ".join(
+                [element for element in value.split() if element not in seen]
+            )
+            if value
+            else ""
+        )
+        for value in row
+    ]
+    seen.update([el for value in row for el in value.split()])
+    if len(new_row) != len(row):
+        raise ValueError(f"Length mismatch: {len(new_row)} != {len(row)}")
+    return pd.Series(new_row, index=row.index)
+
+
+def sanitize_customer_data(
+    customer_list: pd.DataFrame, dictionary: Set[str]
+) -> pd.DataFrame:
+    """Sanitize Customer List."""
+    customer_list = prepare_customer_list(customer_list)
+    english_words = extract_english_words()
+    patterns = compile_regex_patterns()
+
+    sanitized_df = customer_list.applymap(
+        lambda x: remove_keywords(x, dictionary, english_words, patterns)
+    )
+    sanitized_df = sanitize_columns(sanitized_df, patterns)
+    sanitized_df = sanitized_df.apply(remove_duplicates_from_row, axis=1)
+
+    return sanitized_df.dropna(how="all").dropna(axis=1, how="all")
 
 
 def strip_ansi_codes(text: str) -> str:

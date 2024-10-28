@@ -259,6 +259,7 @@ def get_camera_match(
     else:
         camera_column = model_column
         log.info("Using specified Camera Column: '%s'", camera_column)
+
     # Handle both string and integer column identifiers with error checking
     if isinstance(camera_column, int):
         if camera_column < 0 or camera_column >= len(customer_list.columns):

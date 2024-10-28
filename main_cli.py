@@ -94,7 +94,7 @@ def main(customer_model_filepath, camera_column):
 # Execute if being run directly
 if __name__ == "__main__":
     # Modify the file path
-    CSV_FILEPATH = "./Camera Compatibility Sheets/customer_sheet_1.csv"
+    CSV_FILEPATH = "Camera Compatibility Sheets/customer_sheet_12.csv"
     # [Optional] Modify the column number to force a specific model column number
-    MODEL_COLUMN = 1
+    MODEL_COLUMN = None
     main(CSV_FILEPATH, MODEL_COLUMN)

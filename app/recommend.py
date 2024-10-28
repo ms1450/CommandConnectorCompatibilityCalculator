@@ -111,6 +111,26 @@ def get_connectors(
         List[Connector]: A list of connectors that meet the specified
         channels and storage requirements.
     """
+
+    def is_better_connector(
+        surplus_channels,
+        surplus_storage,
+        min_surplus_channels,
+        min_surplus_storage,
+    ):
+        """Helper function to check if the current connector is better."""
+        if surplus_channels >= 0 and surplus_storage >= 0:
+            if surplus_storage < min_surplus_storage:
+                return True
+            if (
+                surplus_storage == min_surplus_storage
+                and surplus_channels < min_surplus_channels
+            ):
+                return True
+        if surplus_channels == 0 and surplus_storage < min_surplus_channels:
+            return True
+        return False
+
     log.debug("\n-----Entering iteration-----")
     # Set to zero if negative
     channels = max(channels, 0)
@@ -155,14 +175,11 @@ def get_connectors(
         log.debug("%f : %f", min_surplus_channels, surplus_channels)
         log.debug("%f : %f", min_surplus_storage, surplus_storage)
         # Select the connector with the least surplus
-        if (
-            (surplus_channels >= 0
-            and surplus_storage >= 0
-            and (
-                (surplus_storage < min_surplus_storage)
-                or (surplus_storage == min_surplus_storage)
-                and surplus_channels < min_surplus_channels
-            )) or (surplus_channels == 0 and surplus_storage < min_surplus_channels)
+        if is_better_connector(
+            surplus_channels,
+            surplus_storage,
+            min_surplus_channels,
+            min_surplus_storage,
         ):
             best_connector = device
             log.debug("New device selected as best: %s", best_connector)
