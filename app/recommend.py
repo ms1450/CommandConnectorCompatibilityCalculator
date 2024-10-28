@@ -145,8 +145,9 @@ def get_connectors(
 
         # Alter channels
         if 10 < channels < 25:
+            log.debug("Altering channels")
             channels = 25
-
+        log.debug(channels)
         # Initiate surplus
         surplus_channels = abs(device["low_channels"] - channels)
         surplus_storage = abs(device["storage"] - storage)
@@ -155,27 +156,29 @@ def get_connectors(
         log.debug("%f : %f", min_surplus_storage, surplus_storage)
         # Select the connector with the least surplus
         if (
-            surplus_channels >= 0
+            (surplus_channels >= 0
             and surplus_storage >= 0
             and (
                 (surplus_storage < min_surplus_storage)
                 or (surplus_storage == min_surplus_storage)
                 and surplus_channels < min_surplus_channels
-            )
+            )) or (surplus_channels == 0 and surplus_storage < min_surplus_channels)
         ):
             best_connector = device
+            log.debug("New device selected as best: %s", best_connector)
             min_surplus_channels = surplus_channels
             min_surplus_storage = surplus_storage
 
     if best_connector:
-        log.debug("Recommending : %s", best_connector["name"])
+        log.debug("Selecting %s to recommend.", best_connector["name"])
         recommendation.append(best_connector)
         # Reduce the remaining channels and storage requirements
         if channels > 0:
-            channels -= best_connector["low_channels"]
+            channels -= int(best_connector["low_channels"])
         if storage > 0:
-            storage -= best_connector["storage"]
+            storage -= int(best_connector["storage"])
 
+        log.debug("Channels: %d", channels)
         # Continue recursing
         return get_connectors(channels, storage, recommendation)
 
@@ -211,7 +214,11 @@ def recommend_connector(
     log.info("Total storage needed: %0.2f", storage)
     total_required_channels = low_channels + high_channels * 2
     log.info("Total channels needed: %i", total_required_channels)
-    recommendations = get_connectors(total_required_channels, storage)
+    try:
+        recommendations = get_connectors(total_required_channels, storage)
+    except RecursionError:
+        print("Max depth exceeded. Exiting...")
+        recommendations = []
     excess_channels = calculate_excess_channels(
         total_required_channels, recommendations
     )
