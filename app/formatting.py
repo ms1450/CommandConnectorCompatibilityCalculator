@@ -135,12 +135,9 @@ def list_verkada_camera_details(
     )
 
 
-@time_function
-def sanitize_customer_data(
-    customer_list: pd.DataFrame, dictionary: Set[str]
-) -> pd.DataFrame:
+def sanitize_customer_data(customer_list: pd.DataFrame, dictionary: Set[str]) -> pd.DataFrame:
     """Sanitize Customer List: remove whitespace, IPs, MACs, special
-    chars, and serial number columns. Preserves duplicate camera name entries.
+    chars, dates, and serial number columns. Preserves duplicate camera name entries.
 
     Args:
         customer_list (pd.DataFrame): Customer List.
@@ -154,7 +151,7 @@ def sanitize_customer_data(
         if not os.path.isdir(NLTK_DATA_PATH):
             download("words", download_dir=NLTK_DATA_PATH)
         else:
-            find("corpora/words")
+            words.ensure_loaded()
     except LookupError:
         download("words")
 
@@ -163,19 +160,26 @@ def sanitize_customer_data(
     # Remove leading/trailing whitespaces
     customer_list = customer_list.astype(str).apply(lambda x: x.str.strip())
 
-    # Extract english words from NLTK
+    # Extract English words from NLTK
     english_words = {word.lower() for word in words.words()}
 
-    # Regex Patterns
+    # Updated Regex Patterns
     integer_pattern = r"^[-+]?\d+$"
     ip_pattern = (
         r"^((25[0-5]|2[0-4][0-9]|"
         r"[01]?[0-9][0-9]?)\.){3}(25[0-5]|"
-        r"2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        r"2[0-4][0-9]|[01]?[0-9][0-9]?)"
+        r"(:\d{1,5})?$"  # Optional port number
     )
     mac_pattern = (
         r"^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|"
-        r"^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$"
+        r"^([0-9A-Fa-f]{4}[:-]){2}[0-9A-Fa-f]{4}$|"
+        r"^[0-9A-Fa-f]{12}$"  # Added pattern for MAC without separators
+    )
+    date_pattern = (
+        r"^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/(\d{4})$|"  # MM/DD/YYYY
+        r"^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/(\d{4})$|"  # DD/MM/YYYY
+        r"^\d{4}-(0?[1-9]|1[0-2])-(0?[1-9]|[12][0-9]|3[01])$"     # YYYY-MM-DD
     )
     special_char_pattern = r'^[/"?\\\-I^&#!%*()~\[\]{}:\'"/\\;,]|II|III|IV$'
     sequential_pattern = r"^#$"  # Updated to match exactly '#'
@@ -197,7 +201,8 @@ def sanitize_customer_data(
                 word.lower()
                 not in english_words  # Remove common English words
                 and not re.match(ip_pattern, word)
-                and not re.match(mac_pattern, word)
+                and not re.match(mac_pattern, word)  # Remove MAC addresses
+                and not re.match(date_pattern, word)  # Remove dates
                 and not re.match(special_char_pattern, word)
                 and (not multiple_words or not re.match(integer_pattern, word))
             )
@@ -205,22 +210,21 @@ def sanitize_customer_data(
         return " ".join(filtered_words)
 
     # Apply the remove_keywords function to all cells
-    sanitized_df = customer_list.map(remove_keywords)
+    sanitized_df = customer_list.applymap(remove_keywords)
 
-    # Remove columns containing IP or MAC addresses
+    # Remove columns containing IP, MAC addresses, or dates
     columns_to_remove = []
     for column in sanitized_df.columns:
         if (
             sanitized_df[column].str.match(ip_pattern).any()
             or sanitized_df[column].str.match(mac_pattern).any()
+            or sanitized_df[column].str.match(date_pattern).any()  # Check for dates
         ):
             columns_to_remove.append(column)
 
     # Identify sequential columns (updated logic)
     sequential_columns = [
-        col
-        for col in sanitized_df.columns
-        if re.match(sequential_pattern, col)
+        col for col in sanitized_df.columns if re.match(sequential_pattern, col)
     ]
 
     # Remove columns with headers containing 'Serial', 'SN', or 'S/N'
@@ -232,6 +236,29 @@ def sanitize_customer_data(
     columns_to_remove.extend(serial_columns)
     columns_to_remove.extend(sequential_columns)
     sanitized_df = sanitized_df.drop(columns=columns_to_remove)
+
+    # New Logic: Remove duplicate values within the same row
+    def remove_duplicates_from_row(row):
+        seen = set()
+        new_row = []
+        for value in row:
+            elements = value.split(" ") if value else []  # Split only if value is not empty
+            unique_elements = [element for element in elements if element not in seen]
+
+            # Add unique elements to the seen set
+            seen.update(unique_elements)
+
+            # Join the unique elements back with spaces and add to the new row
+            new_row.append(" ".join(unique_elements) if unique_elements else "")
+
+        # Ensure the length matches the original row
+        if len(new_row) != len(row):
+            raise ValueError(f"Length mismatch: {len(new_row)} != {len(row)}")
+
+        return pd.Series(new_row, index=row.index)
+
+    # Apply the function to each row in the DataFrame
+    sanitized_df = sanitized_df.apply(remove_duplicates_from_row, axis=1)
 
     # Remove empty rows and columns
     sanitized_df = sanitized_df.dropna(how="all").dropna(axis=1, how="all")
