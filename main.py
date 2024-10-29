@@ -59,6 +59,10 @@ COMPLETED_TEXT = "Completed"
 ERROR_PROCESSING = "Error: Could not process File"
 DEFAULT_FILE_STATUS = "No File Selected"
 DETAILS_LABEL = "Additional Details"
+GREEN_COLOR = "#a0e77d"
+YELLOW_COLOR = "#ebd671"
+RED_COLOR = "#ef8677"
+BLUE_COLOR = "#82b6d9"
 
 
 class CameraCompatibilityApp:
@@ -96,7 +100,6 @@ class CameraCompatibilityApp:
         style.theme_use("clam")
         style.configure(
             "RunButton.TButton",
-            background="#fffcff",
             font=("Helvetica", 14, "bold"),
         )
 
@@ -238,7 +241,7 @@ class CameraCompatibilityApp:
         ttk.Label(
             recommendation_frame,
             text="Command Connector Recommendations",
-            font=("Helvetica", 14, "bold"),
+            font=("Helvetica", 14),
         ).pack(anchor="w")
 
         return self.add_text(recommendation_frame, 4, "recommendation_text")
@@ -304,7 +307,7 @@ class CameraCompatibilityApp:
         )
         self.ui_elements["status_label"].config(
             text="File loaded. Click 'Run Check' to process.",
-            foreground="#ccffcc",
+            foreground="#0e4503",
             font=("Helvetica", 14),
         )
 
@@ -322,13 +325,13 @@ class CameraCompatibilityApp:
         if not self.customer_file_path:
             self.ui_elements["status_label"].config(
                 text=ERROR_NO_FILE,
-                foreground="#ffcccc",
+                foreground="#6b0601",
                 font=("Helvetica", 14),
             )
             return
 
         self.ui_elements["status_label"].config(
-            text=PROCESSING_TEXT, foreground="#fff2cc", font=("Helvetica", 14)
+            text=PROCESSING_TEXT, foreground="#8f6400", font=("Helvetica", 14)
         )
         self.root.update()
 
@@ -342,7 +345,7 @@ class CameraCompatibilityApp:
                 if not compatibility_file:
                     self.ui_elements["status_label"].config(
                         text="Error: Compatibility list not found.",
-                        foreground="#ffcccc",
+                        foreground="#6b0601",
                         font=("Helvetica", 14),
                     )
                     return
@@ -368,7 +371,7 @@ class CameraCompatibilityApp:
                 )
                 self.ui_elements["status_label"].config(
                     text=COMPLETED_TEXT,
-                    foreground="#ccffcc",
+                    foreground="#0e4503",
                     font=("Helvetica", 14),
                 )
                 if self.recommendation_enabled.get():
@@ -389,21 +392,21 @@ class CameraCompatibilityApp:
             else:
                 self.ui_elements["status_label"].config(
                     text=ERROR_PROCESSING,
-                    foreground="#ffcccc",
+                    foreground="#6b0601",
                     font=("Helvetica", 14),
                 )
         except FileNotFoundError as e:
             log.error("File not found: %s", str(e))
             self.ui_elements["status_label"].config(
                 text="Error: File not found.",
-                foreground="#ffcccc",
+                foreground="#6b0601",
                 font=("Helvetica", 14),
             )
         except pd.errors.EmptyDataError as e:
             log.error("Error in run_check: Empty CSV file. %s", str(e))
             self.ui_elements["status_label"].config(
                 text="Error: Empty CSV file.",
-                foreground="#ffcccc",
+                foreground="#6b0601",
                 font=("Helvetica", 14),
             )
         self.toggle_change()
@@ -460,16 +463,16 @@ class CameraCompatibilityApp:
     def _configure_tags(self):
         """Configures tags to color-code the Treeview rows based on match type."""
         self.ui_elements["treeview"].tag_configure(
-            "unsupported", foreground="#ff4d4d"
+            "unsupported", foreground="#000000", background=RED_COLOR
         )
         self.ui_elements["treeview"].tag_configure(
-            "potential", foreground="#ffcc00"
+            "potential", foreground="#000000", background=YELLOW_COLOR
         )
         self.ui_elements["treeview"].tag_configure(
-            "exact", foreground="#33cc33"
+            "exact", foreground="#000000", background=GREEN_COLOR
         )
         self.ui_elements["treeview"].tag_configure(
-            "identified", foreground="#3399ff"
+            "identified", foreground="#000000", background=BLUE_COLOR
         )
 
     def _get_tag_for_match_type(self, match_type: str) -> Optional[str]:
@@ -559,7 +562,7 @@ class CameraCompatibilityApp:
         self.change_detected_flag = True
         self.ui_elements["status_label"].config(
             text="Changes detected. Re-run the check for updated results.",
-            foreground="#cce5ff",
+            foreground="#004c8f",
         )
 
 
