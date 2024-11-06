@@ -125,7 +125,7 @@ class MemoryStorage:
             self: The instance of the class.
 
         Returns:
-              The value of excess channels for memory management.
+            The value of excess channels for memory management.
         """
         return self.excess_channels
 
