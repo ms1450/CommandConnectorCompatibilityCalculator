@@ -23,7 +23,9 @@ session = sessionmaker(bind=engine)()
 class Files(Base):
     __tablename__ = "csv_files"
 
-    site_name: Mapped[str] = mapped_column(String, primary_key=True)
+    site_name: Mapped[str] = mapped_column(
+        String, primary_key=True, unique=True
+    )
     csv_name: Mapped[str] = mapped_column(String)
     results: Mapped["Results"] = relationship("Results", back_populates="file")
 
@@ -32,7 +34,9 @@ class Results(Base):
     __tablename__ = "calculated_results"
 
     site_name: Mapped[str] = mapped_column(
-        ForeignKey("csv_files.site_name"), primary_key=True
+        ForeignKey("csv_files.site_name", ondelete="CASCADE"),
+        primary_key=True,
+        unique=True,
     )
     excess_channels: Mapped[int] = mapped_column(Integer)
     recommended: Mapped[List[str]] = mapped_column(JSON)  # Store list as JSON
@@ -89,9 +93,16 @@ def add_file_results(file_data: dict, results_data: dict):
     try:
         # Load the dictionaries into the table
         file = Files(**file_data)
-        result = Results(**results_data)
+        result = Results(
+            site_name=file_data["site_name"],  # Map to the same site
+            excess_channels=results_data.get("excess_channels", 0),
+            recommended=results_data.get("recommended", []),
+            cameras=results_data.get("cameras", ""),
+        )
 
         session.add(file)
+        session.commit()  # Commit the changes
+
         session.add(result)
         session.commit()  # Commit the changes
     except SQLAlchemyError as e:
@@ -111,6 +122,7 @@ def validate_recommended_field(recommended: List[str]) -> List[str]:
     if not isinstance(recommended, list):
         raise ValueError("'recommended' must be a list of strings")
     if not all(isinstance(item, str) for item in recommended):
+        # recommended = [str(value) for value in recommended]
         raise ValueError("All items in 'recommended' must be strings.")
     return recommended
 
@@ -149,7 +161,7 @@ def update_recommendations(recommendations: List[str], excess: int, site: str):
         )
 
 
-def get_file_results(site: str) -> Dict[Union[str, int]]:
+def get_file_results(site: str) -> Dict[str, Union[str, int]]:
     """Retrieves the calculated data for the selected site
 
     Args:

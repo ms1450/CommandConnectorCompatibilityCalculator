@@ -30,6 +30,7 @@ import pandas as pd
 from colorama import init
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
+import app.cc_db as cc_db
 from app import log, time_function, CompatibleModel
 from app.calculations import (
     compile_camera_mp_channels,
@@ -371,6 +372,20 @@ class CameraCompatibilityApp:
                         matched_cameras, verkada_compatibility_list
                     )
                 else:
+                    serialized_cameras = cc_db.serialize_dataframe(
+                        matched_cameras
+                    )
+                    cc_db.add_file_results(
+                        {
+                            "csv_name": os.path.basename(
+                                self.customer_file_path
+                            ),
+                            "site_name": os.path.basename(
+                                self.customer_file_path
+                            ),
+                        },
+                        {"cameras": serialized_cameras},
+                    )
                     self.ui_elements["recommendation_text"].config(
                         state=NORMAL
                     )
@@ -513,6 +528,19 @@ class CameraCompatibilityApp:
 
         recommendations = self.memory.get_recommendations()
         excess_channels = self.memory.get_excess_channels()
+
+        file_name = os.path.basename(self.customer_file_path)
+        recommendation_names = [cc['name'] for cc in recommendations]
+        validated = cc_db.validate_recommended_field(recommendation_names)
+        serialized_cameras = cc_db.serialize_dataframe(matched_cameras)
+        cc_db.add_file_results(
+            {"csv_name": file_name, "site_name": file_name},
+            {
+                "excess_channels": excess_channels,
+                "recommended": validated,
+                "cameras": serialized_cameras,
+            },
+        )
 
         self.ui_elements["recommendation_text"].config(state=NORMAL)
         self.ui_elements["recommendation_text"].delete(1.0, END)
