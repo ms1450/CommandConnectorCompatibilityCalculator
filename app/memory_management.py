@@ -47,14 +47,14 @@ class MemoryStorage:
 
     def set_compatibility_list(self, comp):
         """Sets the camera compatibility list into memory.
-        
+
         This function loads the camera compatibility list into memory
         to avoid unnecessary calculations when running the application
         mulitple times before closing the user interface.
-        
+
         Args:
             comp (list): The camera compatibility list to store.
-        
+
         Returns:
             None
         """

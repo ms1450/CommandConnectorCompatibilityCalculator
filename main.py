@@ -304,7 +304,7 @@ class CameraCompatibilityApp:
 
                 if loaded_result["recommended"]:
                     rec_text = "Recommended Command Connectors:\n" + "\n".join(
-                        [conn for conn in loaded_result["recommended"]]
+                        list(loaded_result["recommended"])
                     )
                     rec_text += f"\n\nExcess Channels: {loaded_result['excess_channels']}"
                     self.ui_elements["recommendation_text"].insert(
@@ -316,7 +316,6 @@ class CameraCompatibilityApp:
                     )
 
                 self.ui_elements["recommendation_text"].config(state=DISABLED)
-            ##################### END NEW #####################
             else:
                 self.ui_elements["run_button"].config(
                     state="normal", style="RunButton.TButton"
@@ -348,7 +347,7 @@ class CameraCompatibilityApp:
 
             if loaded_result["recommended"]:
                 rec_text = "Recommended Command Connectors:\n" + "\n".join(
-                    [conn for conn in loaded_result["recommended"]]
+                    list(loaded_result["recommended"])
                 )
                 rec_text += (
                     f"\n\nExcess Channels: {loaded_result['excess_channels']}"
@@ -360,7 +359,6 @@ class CameraCompatibilityApp:
                 )
 
             self.ui_elements["recommendation_text"].config(state=DISABLED)
-        ##################### END NEW #####################
         else:
             self.ui_elements["run_button"].config(
                 state="normal", style="RunButton.TButton"

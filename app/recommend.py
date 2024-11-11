@@ -127,9 +127,7 @@ def get_connectors(
                 and surplus_channels < min_surplus_channels
             ):
                 return True
-        if surplus_channels == 0 and surplus_storage < min_surplus_channels:
-            return True
-        return False
+        return surplus_channels == 0 and surplus_storage < min_surplus_channels
 
     log.debug("\n-----Entering iteration-----")
     # Set to zero if negative

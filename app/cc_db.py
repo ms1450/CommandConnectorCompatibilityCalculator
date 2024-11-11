@@ -59,8 +59,8 @@ def serialize_dataframe(df: pd.DataFrame) -> str:
     """
     try:
         return df.to_json(orient="split")
-    except ValueError:
-        raise ValueError("Error serializing DataFrame.")
+    except ValueError as e:
+        raise ValueError("Error serializing DataFrame.") from e
 
 
 def deserialize_dataframe(df_json: str) -> pd.DataFrame:
@@ -74,8 +74,8 @@ def deserialize_dataframe(df_json: str) -> pd.DataFrame:
     """
     try:
         return pd.read_json(df_json, orient="split")
-    except ValueError:
-        raise ValueError("Error deserializing DataFrame.")
+    except ValueError as e:
+        raise ValueError("Error deserializing DataFrame.") from e
 
 
 def add_file_results(file_data: dict, results_data: dict):
@@ -122,7 +122,6 @@ def validate_recommended_field(recommended: List[str]) -> List[str]:
     if not isinstance(recommended, list):
         raise ValueError("'recommended' must be a list of strings")
     if not all(isinstance(item, str) for item in recommended):
-        # recommended = [str(value) for value in recommended]
         raise ValueError("All items in 'recommended' must be strings.")
     return recommended
 
