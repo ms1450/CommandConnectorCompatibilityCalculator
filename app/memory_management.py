@@ -39,10 +39,26 @@ class MemoryStorage:
         Returns:
             None
         """
+        self.compatibility_list = None
         self.recommendations = None
         self.excess_channels = None
         self.compatible = None
         self.results = None
+
+    def set_compatibility_list(self, comp):
+        """Sets the camera compatibility list into memory.
+        
+        This function loads the camera compatibility list into memory
+        to avoid unnecessary calculations when running the application
+        mulitple times before closing the user interface.
+        
+        Args:
+            comp (list): The camera compatibility list to store.
+        
+        Returns:
+            None
+        """
+        self.compatibility_list = comp
 
     def set_results(self, results):
         """Sets the results of the camera match algorithm
@@ -57,6 +73,9 @@ class MemoryStorage:
             None
         """
         self.results = results
+
+    def set_compatibility_list():
+        pass
 
     def get_results(self):
         """Gets the results of the dataframe of the camera match algorithm.

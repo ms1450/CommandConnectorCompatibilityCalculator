@@ -38,10 +38,10 @@ class Results(Base):
         primary_key=True,
         unique=True,
     )
+    file: Mapped["Files"] = relationship("Files", back_populates="results")
     excess_channels: Mapped[int] = mapped_column(Integer)
     recommended: Mapped[List[str]] = mapped_column(JSON)  # Store list as JSON
     cameras: Mapped[str] = mapped_column(Text)  # Store DataFrame as string
-    file: Mapped["Files"] = relationship("Files", back_populates="results")
 
 
 # Create the tables if they do not already exist.
@@ -183,6 +183,31 @@ def get_file_results(site: str) -> Dict[str, Union[str, int]]:
         }
     log.warning("No results were found.")
     return {}
+
+
+def file_exists(file_name):
+    """Returns a boolean value if a file exists in the database.
+
+    Returns a boolean value indicating whether a csv file with the same
+    name exists in the database.
+    #! Failed edge-case is if there are two files with the same name but
+    #! different site names.
+
+    Args:
+        file_name (str): The csv file name to check if it exists in the database.
+
+    Returns:
+        bool: Boolean value indicating True or False on a file existing
+            in the database.
+    """
+    if (
+        exists := session.query(Files)
+        .filter(Files.csv_name == file_name)
+        .first()
+    ):
+        log.info("Found %s", exists)
+        return True
+    return False
 
 
 def close_session():

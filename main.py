@@ -8,6 +8,7 @@ Purpose: Import a list of third-party cameras and return
 import os
 from typing import Optional, List
 
+import pandas as pd
 from tkinter import (
     Frame,
     Text,
@@ -26,7 +27,6 @@ from tkinter import (
     NORMAL,
 )
 from tkinter import ttk, TclError
-import pandas as pd
 from colorama import init
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
@@ -286,20 +286,90 @@ class CameraCompatibilityApp:
             filetypes=[("CSV files", "*.csv")]
         ):
             self._update_file_selection(file_path)
+            ##################### NEW #####################
+            if cc_db.file_exists(os.path.basename(file_path)):
+                loaded_result = cc_db.get_file_results(
+                    os.path.basename(file_path)
+                )
+                self.memory.set_results(loaded_result["cameras"])
+                self.ui_elements["export_button"].config(
+                    state="normal", style="Export.TButton"
+                )
+
+                self._display_results(
+                    loaded_result["cameras"], self.verkada_compatibility_list
+                )
+                self.ui_elements["recommendation_text"].config(state=NORMAL)
+                self.ui_elements["recommendation_text"].delete(1.0, END)
+
+                if loaded_result["recommended"]:
+                    rec_text = "Recommended Command Connectors:\n" + "\n".join(
+                        [conn for conn in loaded_result["recommended"]]
+                    )
+                    rec_text += f"\n\nExcess Channels: {loaded_result['excess_channels']}"
+                    self.ui_elements["recommendation_text"].insert(
+                        END, rec_text
+                    )
+                else:
+                    self.ui_elements["recommendation_text"].insert(
+                        END, "No recommendations available."
+                    )
+
+                self.ui_elements["recommendation_text"].config(state=DISABLED)
+            ##################### END NEW #####################
+            else:
+                self.ui_elements["run_button"].config(
+                    state="normal", style="RunButton.TButton"
+                )
+                self.ui_elements["status_label"].config(
+                    text="File loaded. Click 'Run Check' to process.",
+                    foreground="#0e4503",
+                    font=("Helvetica", 14),
+                )
 
     def _update_file_selection(self, file_selection: str):
         """Updates the file selection label and enables the run button."""
         self.customer_file_path = file_selection
         file_name = os.path.basename(self.customer_file_path)
         self.ui_elements["file_status"].set(f"Selected: {file_name}")
-        self.ui_elements["run_button"].config(
-            state="normal", style="RunButton.TButton"
-        )
-        self.ui_elements["status_label"].config(
-            text="File loaded. Click 'Run Check' to process.",
-            foreground="#0e4503",
-            font=("Helvetica", 14),
-        )
+        ##################### NEW #####################
+        if cc_db.file_exists(file_name):
+            loaded_result = cc_db.get_file_results(file_name)
+            self.memory.set_results(loaded_result["cameras"])
+            self.ui_elements["export_button"].config(
+                state="normal", style="Export.TButton"
+            )
+
+            self._display_results(
+                loaded_result["cameras"], self.verkada_compatibility_list
+            )
+            self.ui_elements["recommendation_text"].config(state=NORMAL)
+            self.ui_elements["recommendation_text"].delete(1.0, END)
+
+            if loaded_result["recommended"]:
+                rec_text = "Recommended Command Connectors:\n" + "\n".join(
+                    [conn for conn in loaded_result["recommended"]]
+                )
+                rec_text += (
+                    f"\n\nExcess Channels: {loaded_result['excess_channels']}"
+                )
+                self.ui_elements["recommendation_text"].insert(END, rec_text)
+            else:
+                self.ui_elements["recommendation_text"].insert(
+                    END, "No recommendations available."
+                )
+
+            self.ui_elements["recommendation_text"].config(state=DISABLED)
+        ##################### END NEW #####################
+        else:
+            self.ui_elements["run_button"].config(
+                state="normal", style="RunButton.TButton"
+            )
+            self.ui_elements["status_label"].config(
+                text="File loaded. Click 'Run Check' to process.",
+                foreground="#0e4503",
+                font=("Helvetica", 14),
+            )
 
     @time_function
     def export_results(self):
@@ -340,15 +410,15 @@ class CameraCompatibilityApp:
                     )
                     return
 
-            verkada_compatibility_list = compile_camera_mp_channels(
+            self.verkada_compatibility_list = compile_camera_mp_channels(
                 parse_hardware_compatibility_list(compatibility_file)
             )
             customer_cameras_list = sanitize_customer_data(
                 parse_customer_list(self.customer_file_path),
-                get_manufacturer_set(verkada_compatibility_list),
+                get_manufacturer_set(self.verkada_compatibility_list),
             )
             matched_cameras = get_camera_match(
-                customer_cameras_list, verkada_compatibility_list
+                customer_cameras_list, self.verkada_compatibility_list
             )
 
             if matched_cameras is not None:
@@ -359,7 +429,7 @@ class CameraCompatibilityApp:
                 )
 
                 self._display_results(
-                    matched_cameras, verkada_compatibility_list
+                    matched_cameras, self.verkada_compatibility_list
                 )
                 self.ui_elements["status_label"].config(
                     text=COMPLETED_TEXT,
@@ -369,7 +439,7 @@ class CameraCompatibilityApp:
 
                 if self.recommendation_enabled.get():
                     self._perform_recommendations(
-                        matched_cameras, verkada_compatibility_list
+                        matched_cameras, self.verkada_compatibility_list
                     )
                 else:
                     serialized_cameras = cc_db.serialize_dataframe(
@@ -530,7 +600,7 @@ class CameraCompatibilityApp:
         excess_channels = self.memory.get_excess_channels()
 
         file_name = os.path.basename(self.customer_file_path)
-        recommendation_names = [cc['name'] for cc in recommendations]
+        recommendation_names = [cc["name"] for cc in recommendations]
         validated = cc_db.validate_recommended_field(recommendation_names)
         serialized_cameras = cc_db.serialize_dataframe(matched_cameras)
         cc_db.add_file_results(
