@@ -118,6 +118,8 @@ def update_specs(hcl_file: str, specs_file: str) -> None:
     set_hcl = set(df_hcl["Model Name"])
     set_specs = set(df_specs["Model Name"])
 
+
+
     # Finding entries in set_hcl that are not in set_specs
     missing_in_specs = set_hcl - set_specs
 
@@ -136,8 +138,9 @@ if __name__ == "__main__":
     HCL_URL = "https://www.verkada.com/security-cameras/command-connector/hcl/?page=1"
     HCL_FILEPATH = "../Verkada Command Connector Compatibility.csv"
     SPECS_FILEPATH = "../Camera Specs.csv"
+    update_specs(HCL_FILEPATH, SPECS_FILEPATH)
 
-    if downloaded_file := download_hcl(HCL_URL):
-        update_specs(downloaded_file, SPECS_FILEPATH)
-    else:
-        print("Failed to download HCL file. Cannot update specs.")
+#    if downloaded_file := download_hcl(HCL_URL):
+#        update_specs(downloaded_file, SPECS_FILEPATH)
+#    else:
+#        print("Failed to download HCL file. Cannot update specs.")
