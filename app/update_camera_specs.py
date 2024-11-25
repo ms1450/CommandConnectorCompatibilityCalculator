@@ -124,7 +124,9 @@ def update_specs(hcl_file: str, specs_file: str) -> None:
     missing_in_specs = set_hcl - set_specs
 
     # Printing each missing entry with all its fields
+    count = 0
     for entry in missing_in_specs:
+        count += 1
         # Get the full row for the missing entry
         row = df_hcl[df_hcl["Model Name"] == entry].iloc[0]
         print(f"Missing entry: {entry}")
@@ -132,7 +134,7 @@ def update_specs(hcl_file: str, specs_file: str) -> None:
         for column, value in row.items():
             print(f"  {column}: {value}")
         print("------------------------")
-
+    print("Number of missing entries:", count)
 
 if __name__ == "__main__":
     HCL_URL = "https://www.verkada.com/security-cameras/command-connector/hcl/?page=1"
