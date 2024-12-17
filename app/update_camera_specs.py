@@ -138,7 +138,7 @@ def update_specs(hcl_file: str, specs_file: str) -> None:
 
 if __name__ == "__main__":
     HCL_URL = "https://www.verkada.com/security-cameras/command-connector/hcl/?page=1"
-    HCL_FILEPATH = "../Verkada Command Connector Compatibility.csv"
+    HCL_FILEPATH = "../Verkada Command Connector Compatibility (old).csv"
     SPECS_FILEPATH = "../Camera Specs.csv"
     update_specs(HCL_FILEPATH, SPECS_FILEPATH)
 
