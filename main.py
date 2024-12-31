@@ -4,6 +4,7 @@ Co-Author: Ian Young
 Purpose: Import a list of third-party cameras and return
     which cameras are compatible with the command connector.
 """
+
 # Standard library imports
 import os
 from typing import List
@@ -11,7 +12,7 @@ from tkinter import filedialog
 
 # Third-party imports
 import customtkinter as ctk
-import pandas
+import pandas as pd
 
 # Local imports
 from app.calculations import compile_camera_mp_channels, get_camera_match
@@ -29,8 +30,10 @@ from app.recommend import recommend_connectors
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
+
 class App(ctk.CTk):
     """A class to manage the GUI for Command Connector Compatibility Calculator."""
+
     def __init__(self):
         """Initialize the application and its components."""
         super().__init__()
@@ -83,9 +86,7 @@ class App(ctk.CTk):
         self._create_main_window()
 
     def _init_sidebar(self):
-        self.sidebar_frame = ctk.CTkFrame(
-            self, width=300, corner_radius=0
-        )
+        self.sidebar_frame = ctk.CTkFrame(self, width=300, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
         self.sidebar_frame.grid_propagate(False)
         self.sidebar_frame.grid_columnconfigure(0, weight=1)
@@ -100,9 +101,7 @@ class App(ctk.CTk):
         )
         self.logo_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
-        self.tabview = ctk.CTkTabview(
-            self.sidebar_frame, width=260
-        )
+        self.tabview = ctk.CTkTabview(self.sidebar_frame, width=260)
         self.tabview.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
         self.tabview.add("Basic")
         self.tabview.add("Settings")
@@ -292,7 +291,7 @@ class App(ctk.CTk):
         self.current_file_info = {}
         self.current_file_info["filename"] = os.path.basename(file_path)
         self.current_file_info["filesize"] = (
-                os.path.getsize(file_path) / 1024
+            os.path.getsize(file_path) / 1024
         )  # Convert to KB
 
         # Count different types of matches
@@ -303,9 +302,7 @@ class App(ctk.CTk):
         else:
             match_counts = {}
 
-        self.current_file_info["exact_matches"] = match_counts.get(
-            "exact", 0
-        )
+        self.current_file_info["exact_matches"] = match_counts.get("exact", 0)
         self.current_file_info["identified_matches"] = match_counts.get(
             "identified", 0
         )
@@ -317,10 +314,10 @@ class App(ctk.CTk):
         )
 
         self.current_file_info["total_cameras"] = (
-                self.current_file_info["exact_matches"]
-                + self.current_file_info["identified_matches"]
-                + self.current_file_info["potential_matches"]
-                + self.current_file_info["unsupported_matches"]
+            self.current_file_info["exact_matches"]
+            + self.current_file_info["identified_matches"]
+            + self.current_file_info["potential_matches"]
+            + self.current_file_info["unsupported_matches"]
         )
 
         # Display information
@@ -337,8 +334,8 @@ class App(ctk.CTk):
 
         # If recommendations are enabled
         if (
-                hasattr(self, "recommend_cc_value")
-                and self.recommend_cc_value != 0
+            hasattr(self, "recommend_cc_value")
+            and self.recommend_cc_value != 0
         ):
             memory = MemoryStorage()
             recommend_connectors(
@@ -374,7 +371,7 @@ class App(ctk.CTk):
         :return:
         """
         if files := filedialog.askopenfilenames(
-                title="Choose files to Run", filetypes=[("CSV files", "*.csv")]
+            title="Choose files to Run", filetypes=[("CSV files", "*.csv")]
         ):
             # Clean Previous Files
             self.file_paths.clear()
@@ -403,8 +400,8 @@ class App(ctk.CTk):
         self.page_label.configure(text=f"{os.path.basename(file_path)}")
 
         if (
-                self.force_column_entry.get() is None
-                or self.force_column_entry.get().strip() == ""
+            self.force_column_entry.get() is None
+            or self.force_column_entry.get().strip() == ""
         ):
             self.force_column_value = None
         else:
@@ -425,7 +422,7 @@ class App(ctk.CTk):
                 print(matched_cameras)
 
     def add_row_to_scrollable_frame(
-            self, frame, camera_name, verkada_camera, colors
+        self, frame, camera_name, verkada_camera, colors
     ):
         """Add a new row to the scrollable frame with camera information.
         Args:
@@ -495,7 +492,7 @@ class App(ctk.CTk):
                 ).pack(fill="both", padx=5, pady=5)
             )
 
-    def populate_table(self, camera_list: pandas.DataFrame):
+    def populate_table(self, camera_list: pd.DataFrame):
         """
         Populate the table with camera information from the DataFrame.
 
@@ -511,7 +508,7 @@ class App(ctk.CTk):
                 self.output_scrollable,
                 row["name"],
                 row["verkada_model"],
-                color
+                color,
             )
 
     def set_recommend_cc_retention(self, value):
@@ -554,12 +551,13 @@ class App(ctk.CTk):
             tuple: Pair of colors for normal and hover states
         """
         color_map = {
-            "exact": ("#a0e77d", "#61724C"),     # Green
-            "identified": ("#82b6d9", "#4C4E72"), # Blue
+            "exact": ("#a0e77d", "#61724C"),  # Green
+            "identified": ("#82b6d9", "#4C4E72"),  # Blue
             "potential": ("#ebd671", "#726E4C"),  # Yellow
-            "unsupported": ("#ef8677", "#724C4C") # Red
+            "unsupported": ("#ef8677", "#724C4C"),  # Red
         }
         return color_map.get(match_type, ("#ffffff", "#000000"))
+
 
 def change_appearance_mode_event(mode):
     """
