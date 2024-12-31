@@ -6,29 +6,20 @@ Purpose: The contents of this file are to perform output.
 
 # pylint: disable=ungrouped-imports
 
-from subprocess import check_call
-from sys import executable
 from typing import List
 
-try:
-    import pandas as pd
-    from tabulate import tabulate
-except ImportError as e:
-    package_name = str(e).split()[-1]
-    check_call([executable, "-m", "pip", "install", package_name])
-    # Import again after installation
-    import pandas as pd
-    from tabulate import tabulate
+import pandas as pd
+from tabulate import tabulate
 
 from app import CompatibleModel, log
 from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
 def print_results(
-    change: bool,
-    results: pd.DataFrame,
-    verkada_list: List[CompatibleModel],
-    memory,
+        change: bool,
+        results: pd.DataFrame,
+        verkada_list: List[CompatibleModel],
+        memory,
 ):
     """Print and save a formatted list of camera data.
 
@@ -40,16 +31,18 @@ def print_results(
         memory (MemoryStorage): Class to store frequently accessed variables.
 
     Returns:
-        None
+        pd.DataFrame: DataFrame containing the formatted camera data if recalculation
+        was needed, otherwise None.
     """
     log.debug("Run calculations: %s", (not memory.has_text_widget() or change))
+
     if not memory.has_text_widget() or change:
         output = []
 
         for _, row in results.iterrows():
             camera_data = {
                 "camera_name": row["name"],
-                "camera_count": int(row["count"]),
+                "camera_count": row["count"],
                 "match_type": row["match_type"],
                 "verkada_details": list_verkada_camera_details(
                     row["verkada_model"], verkada_list
@@ -90,7 +83,8 @@ def print_results(
         memory.set_compatible_cameras(table)
         log.info("Compatible cameras set in memory")
         print(table)
-
+        return df
+    return None
     # NOTE: Uncomment to write truncated to terminal
     # print(df.head())
 
