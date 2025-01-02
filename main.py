@@ -2,566 +2,571 @@
 Author: Mehul Sen
 Co-Author: Ian Young
 Purpose: Import a list of third-party cameras and return
-    which cameras are compatible with the cloud connector.
+    which cameras are compatible with the command connector.
 """
 
+# pylint: disable=attribute-defined-outside-init,too-many-instance-attributes
+# Standard library imports
 import os
-from typing import Optional, List
+from tkinter import filedialog
 
-from tkinter import (
-    Frame,
-    Text,
-    filedialog,
-    IntVar,
-    StringVar,
-    BOTH,
-    LEFT,
-    RIGHT,
-    BOTTOM,
-    X,
-    Y,
-    WORD,
-    END,
-    DISABLED,
-    NORMAL,
-)
-from tkinter import ttk, TclError
+# Third-party imports
+import customtkinter as ctk
 import pandas as pd
-from colorama import init
-from tkinterdnd2 import DND_FILES, TkinterDnD
 
-from app import log, time_function, CompatibleModel
-from app.calculations import (
-    compile_camera_mp_channels,
-    get_camera_match,
-)
+# Local imports
+from app.calculations import compile_camera_mp_channels, get_camera_match
 from app.file_handling import (
-    parse_customer_list,
     parse_hardware_compatibility_list,
+    parse_customer_list,
 )
 from app.formatting import (
-    get_manufacturer_set,
-    sanitize_customer_data,
     list_verkada_camera_details,
     export_to_csv,
 )
 from app.memory_management import MemoryStorage
 from app.recommend import recommend_connectors
 
-init(autoreset=True)
-
-SELECT_CSV_TEXT = "Select CSV"
-RUN_CHECK_TEXT = "Run Check"
-EXPORT_TEXT = "Export CSV"
-ERROR_NO_FILE = "Error: No File Selected"
-PROCESSING_TEXT = "Processing... Please Wait"
-COMPLETED_TEXT = "Completed"
-ERROR_PROCESSING = "Error: Could not process File"
-DEFAULT_FILE_STATUS = "No File Selected"
-DETAILS_LABEL = "Additional Details"
-GREEN_COLOR = "#a0e77d"
-YELLOW_COLOR = "#ebd671"
-RED_COLOR = "#ef8677"
-BLUE_COLOR = "#82b6d9"
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
 
 
-class CameraCompatibilityApp:
+def _format_recommendations(recommendations, memory):
+    formatted = ["\nRecommended Connectors:"]
+    formatted.extend(f"  - {rec[0]}: {rec[1]}" for rec in recommendations)
+    formatted.append(f"\nExcess Channels: {memory.get_excess_channels()}")
+    return formatted
+
+
+def _get_color_for_match_type(match_type: str) -> tuple:
+    """
+    Get the color scheme for a given match type.
+
+    Args:
+        match_type: Type of camera match
+
+    Returns:
+        tuple: Pair of colors for normal and hover states
+    """
+    color_map = {
+        "exact": ("#a0e77d", "#61724C"),  # Green
+        "identified": ("#82b6d9", "#4C4E72"),  # Blue
+        "potential": ("#ebd671", "#726E4C"),  # Yellow
+        "unsupported": ("#ef8677", "#724C4C"),  # Red
+    }
+    return color_map.get(match_type, ("#ffffff", "#000000"))
+
+
+class App(ctk.CTk):
     """A class to manage the GUI for Command Connector Compatibility Calculator."""
 
-    def __init__(self, window):
-        """Initializes the Camera Compatibility class."""
-        self.root = window
-        self.change_detected_flag = True
-        self.customer_file_path: Optional[str] = None
-        self.memory = MemoryStorage()
+    def __init__(self):
+        super().__init__()
+        self.force_column_value = None
+        self.current_file_info = None
+        self.recommend_cc_value = None
+        self.current_camera_list = None
+        self._init_variables()
+        self._init_window()
+        self._init_sidebar()
+        self._create_main_window()
+        self._load_compatibility_list()
 
-        # Retention spinbox value
-        self.retention = IntVar(value=30)
-        self.recommendation_enabled = IntVar(value=0)
+    def _init_variables(self):
+        self.file_paths = []
+        self.command_connector_compatibility_list = (
+            "Verkada Command Connector Compatibility.csv"
+        )
+        self.verkada_compatibility_list = None
+        self.current_camera_list = None
+        self.recommend_cc_value = 0
+        self.force_column_value = 0
+        self.current_file_info = {}
+        self._init_ui_components()
 
-        # UI elements stored in one dictionary
-        self.ui_elements = {
-            "file_status": StringVar(value=DEFAULT_FILE_STATUS),
-            "treeview": None,
-            "item_details": {},
+    def _init_ui_components(self):
+        self.sidebar_frame = None
+        self.logo_label = None
+        self.tabview = None
+        self.select_button = None
+        self.scrollable_frame = None
+        self.force_column_entry = None
+        self.main_frame = None
+        self.top_frame = None
+        self.page_label = None
+        self.export_button = None
+        self.bottom_frame = None
+        self.output_scrollable = None
+        self.info_panel = None
+        self.general_info_label = None
+        self.general_info_frame = None
+        self.camera_details_label = None
+        self.camera_details_frame = None
+
+    def _init_window(self):
+        self.title("Command Connector Compatibility Calculator")
+        self.geometry(f"{1100}x{580}")
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+    def _load_compatibility_list(self):
+        self.verkada_compatibility_list = compile_camera_mp_channels(
+            parse_hardware_compatibility_list(
+                self.command_connector_compatibility_list
+            )
+        )
+
+    def _create_info_panel(self):
+        self._create_info_panel_structure()
+        self._create_general_info_section()
+        self._create_camera_details_section()
+
+    def _create_info_panel_structure(self):
+        self.info_panel = ctk.CTkFrame(self.bottom_frame)
+        self.info_panel.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+        self.info_panel.grid_columnconfigure(0, weight=4)
+        self.info_panel.grid_rowconfigure(3, weight=1)
+
+    def _create_general_info_section(self):
+        self.general_info_label = ctk.CTkLabel(
+            self.info_panel,
+            text="General Information",
+            fg_color=("gray85", "gray20"),
+            corner_radius=6,
+        )
+        self.general_info_label.grid(
+            row=0, column=0, sticky="ew", padx=5, pady=3
+        )
+
+        self.general_info_frame = ctk.CTkFrame(self.info_panel)
+        self.general_info_frame.grid(
+            row=1, column=0, sticky="ew", padx=5, pady=3
+        )
+        self.general_info_frame.grid_columnconfigure(0, weight=1)
+
+    def _create_camera_details_section(self):
+        self.camera_details_label = ctk.CTkLabel(
+            self.info_panel,
+            text="Camera Details",
+            fg_color=("gray85", "gray20"),
+            corner_radius=6,
+        )
+        self.camera_details_label.grid(
+            row=2, column=0, sticky="ew", padx=5, pady=3
+        )
+
+        self.camera_details_frame = ctk.CTkFrame(self.info_panel)
+        self.camera_details_frame.grid(
+            row=3, column=0, sticky="nsew", padx=5, pady=3
+        )
+        self.camera_details_frame.grid_columnconfigure(0, weight=1)
+        self.camera_details_frame.grid_rowconfigure(0, weight=1)
+
+    def _create_bottom_frame(self):
+        self.bottom_frame = ctk.CTkFrame(self.main_frame)
+        self.bottom_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.bottom_frame.grid_rowconfigure(0, weight=1)
+        self.bottom_frame.grid_columnconfigure(0, weight=6)
+        self.bottom_frame.grid_columnconfigure(1, weight=1)
+
+        self._create_output_scrollable()
+        self._create_info_panel()
+
+    def _create_output_scrollable(self):
+        self.output_scrollable = ctk.CTkScrollableFrame(
+            self.bottom_frame, label_text="Camera Compatibility List"
+        )
+        self.output_scrollable.grid(
+            row=0, column=0, sticky="nsew", padx=5, pady=5
+        )
+        self.output_scrollable.grid_columnconfigure(0, weight=1)
+
+    def _process_match_counts(self, camera_list):
+        if not camera_list.empty:
+            match_counts = (
+                camera_list.groupby("match_type")["count"].sum().to_dict()
+            )
+        else:
+            match_counts = {}
+
+        self.current_file_info.update(
+            {
+                "exact_matches": match_counts.get("exact", 0),
+                "identified_matches": match_counts.get("identified", 0),
+                "potential_matches": match_counts.get("potential", 0),
+                "unsupported_matches": match_counts.get("unsupported", 0),
+            }
+        )
+
+        self.current_file_info["total_cameras"] = sum(
+            self.current_file_info[k]
+            for k in [
+                "exact_matches",
+                "identified_matches",
+                "potential_matches",
+                "unsupported_matches",
+            ]
+        )
+
+    def _get_info_text_with_recommendations(self):
+        info_text = self._get_basic_info_text()
+
+        if self.recommend_cc_value != 0:
+            memory = MemoryStorage()
+            recommend_connectors(
+                True,
+                self.recommend_cc_value,
+                self.current_camera_list,
+                self.verkada_compatibility_list,
+                memory,
+            )
+            recommendations = memory.print_recommendations()
+            if recommendations:
+                print("HERE!")
+                info_text.extend(
+                    _format_recommendations(recommendations, memory)
+                )
+
+        return info_text
+
+    def _get_basic_info_text(self):
+        return [
+            f"File: {self.current_file_info['filename']} "
+            f"({self.current_file_info['filesize']:.2f} KB)",
+            f"Total Cameras: " f"{self.current_file_info['total_cameras']}",
+            "Camera Breakdown:",
+            f"  - Exact Matches: {self.current_file_info['exact_matches']}",
+            f"  - Identified Matches: {self.current_file_info['identified_matches']}",
+            f"  - Potential Matches: {self.current_file_info['potential_matches']}",
+            f"  - Unsupported Matches: {self.current_file_info['unsupported_matches']}",
+        ]
+
+    def _init_sidebar(self):
+        self.sidebar_frame = ctk.CTkFrame(self, width=300, corner_radius=0)
+        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_frame.grid_propagate(False)
+        self.sidebar_frame.grid_columnconfigure(0, weight=1)
+        self.sidebar_frame.grid_rowconfigure(1, weight=1)
+
+        self.logo_label = ctk.CTkLabel(
+            self.sidebar_frame,
+            text="Command Connector\nCompatibility Calculator",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            justify="center",
+            wraplength=300,
+        )
+        self.logo_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+
+        self.tabview = ctk.CTkTabview(self.sidebar_frame, width=260)
+        self.tabview.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        self.tabview.add("Basic")
+        self.tabview.add("Settings")
+
+        for tab_name in ["Basic", "Settings"]:
+            self.tabview.tab(tab_name).grid_columnconfigure(0, weight=1)
+            self.tabview.tab(tab_name).grid_rowconfigure(1, weight=1)
+
+        self._setup_basic_tab()
+        self._setup_settings_tab()
+
+    def _setup_basic_tab(self):
+        self.select_button = ctk.CTkButton(
+            self.tabview.tab("Basic"),
+            text="Import File(s)",
+            command=self.select_files_event,
+            height=32,
+        )
+        self.select_button.grid(row=0, column=0, sticky="ew", pady=5, padx=5)
+
+        self.scrollable_frame = ctk.CTkScrollableFrame(
+            self.tabview.tab("Basic"), label_text="Selected File(s)"
+        )
+        self.scrollable_frame.grid(row=1, column=0, sticky="nsew", padx=5)
+        self.scrollable_frame.grid_columnconfigure(0, weight=1)
+
+    def _setup_settings_tab(self):
+        settings_frame = ctk.CTkFrame(
+            self.tabview.tab("Settings"), fg_color="transparent"
+        )
+        settings_frame.grid(row=0, column=0, sticky="nsew")
+        settings_frame.grid_columnconfigure(0, weight=1)
+
+        settings = [
+            (
+                "Command Connector Retention:",
+                0,
+                ["None", "30", "60", "90"],
+                self.set_recommend_cc_retention,
+            ),
+            (
+                "Appearance Mode:",
+                4,
+                ["System", "Light", "Dark"],
+                change_appearance_mode_event,
+            ),
+        ]
+        for text, row, options, command in settings:
+            ctk.CTkLabel(settings_frame, text=text, anchor="w").grid(
+                row=row, column=0, sticky="nsew", pady=(0, 5)
+            )
+            if options:
+                ctk.CTkOptionMenu(
+                    settings_frame, values=options, command=command
+                ).grid(row=row + 1, column=0, sticky="new", pady=(0, 15))
+
+        # Add Force Column entry field
+        ctk.CTkLabel(settings_frame, text="Force Column:", anchor="w").grid(
+            row=2, column=0, sticky="nsew", pady=(0, 5)
+        )
+        self.force_column_entry = ctk.CTkEntry(
+            settings_frame, placeholder_text="Enter Camera Column Number"
+        )
+        self.force_column_entry.grid(
+            row=3, column=0, sticky="new", pady=(0, 15)
+        )
+
+    def _create_main_window(self):
+        # Main frame
+        self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.main_frame.grid(row=0, column=1, sticky="nsew", padx=5)
+        self.main_frame.grid_rowconfigure(1, weight=1)
+        self.main_frame.grid_columnconfigure(0, weight=1)
+
+        # Top section
+        self.top_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.top_frame.grid(row=0, column=0, sticky="nsew")
+        self.top_frame.grid_columnconfigure(0, weight=1)
+
+        self.page_label = ctk.CTkLabel(
+            self.top_frame,
+            text="No File Selected",
+            font=ctk.CTkFont(size=13),
+            fg_color=("gray85", "gray20"),
+            corner_radius=6,
+        )
+        self.page_label.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
+
+        self.export_button = ctk.CTkButton(
+            self.top_frame, text="Export", command=self.export_event
+        )
+        self.export_button.grid(row=0, column=1, sticky="e", padx=5, pady=5)
+
+        # Create bottom frame with scrollable output and info panel
+        self._create_bottom_frame()
+
+    def update_general_info(self, file_path, camera_list):
+        """Update the general information display."""
+        # Clear previous information
+        for widget in self.general_info_frame.winfo_children():
+            widget.destroy()
+
+        # Update file information
+        self.current_file_info = {
+            "filename": os.path.basename(file_path),
+            "filesize": os.path.getsize(file_path) / 1024,
         }
 
-        # Set up the user interface
-        self._setup_ui()
-        self.toggle_recommendation_visibility()
+        # Process match counts
+        self._process_match_counts(camera_list)
 
-    def _setup_ui(self):
-        """Sets up the main UI elements for the application."""
-        self.root.title("Command Connector Compatibility Calculator")
-        self.root.geometry("1000x1000")
+        # Get info text with recommendations
+        info_text = self._get_info_text_with_recommendations()
 
-        style = ttk.Style(self.root)
-        # clam, alt, default, classic
-        style.theme_use("clam")
-        style.configure(
-            "RunButton.TButton",
-            font=("Helvetica", 14, "bold"),
-        )
+        # Create label with updated info
+        ctk.CTkLabel(
+            self.general_info_frame,
+            text="\n".join(info_text),
+            anchor="w",
+            justify="left",
+            wraplength=400,
+        ).pack(fill="both", padx=5, pady=5)
 
-        self._create_widgets()
-        self._setup_layout()
-        self._configure_drag_and_drop()
-
-    def _create_widgets(self):
-        """Creates the widgets (buttons, labels, frames) for the UI."""
-        self.ui_elements["main_frame"] = ttk.Frame(self.root, padding="10")
-        self.ui_elements["file_frame"] = self._create_file_frame()
-        self.ui_elements["options_frame"] = self._create_options_frame()
-        self.ui_elements["run_button"] = ttk.Button(
-            self.ui_elements["main_frame"],
-            text=RUN_CHECK_TEXT,
-            command=self.run_check,
-            state="disabled",
-            style="RunButton.TButton",
-        )
-        self.ui_elements["status_label"] = ttk.Label(
-            self.ui_elements["main_frame"],
-            text="",
-            font=("Helvetica", 14, "italic"),
-        )
-        self.ui_elements["result_frame"] = self._create_result_frame()
-        self.ui_elements["details_frame"] = self._create_details_frame()
-        self.ui_elements["recommendation_frame"] = (
-            self._create_recommendation_frame()
-        )
-
-    def _create_file_frame(self) -> Frame:
-        """Creates the file selection frame."""
-        file_frame = ttk.Frame(self.ui_elements["main_frame"])
-        ttk.Label(
-            file_frame,
-            textvariable=self.ui_elements["file_status"],
-            font=("Helvetica", 14),
-        ).pack(side=LEFT, fill=X, expand=True)
-        ttk.Button(
-            file_frame, text=SELECT_CSV_TEXT, command=self.select_file
-        ).pack(side=LEFT)
-        self.ui_elements["export_button"] = ttk.Button(
-            file_frame,
-            text=EXPORT_TEXT,
-            command=self.export_results,
-            state="disabled",
-            style="Export.TButton",
-        )
-        self.ui_elements["export_button"].pack(side=RIGHT)
-        return file_frame
-
-    def _create_options_frame(self) -> Frame:
-        """Creates the options frame."""
-        options_frame = ttk.Frame(self.ui_elements["main_frame"])
-
-        # Frame for retention period input
-        self.ui_elements["retention_frame"] = ttk.Frame(options_frame)
-        ttk.Label(
-            self.ui_elements["retention_frame"],
-            text="Retention Period (days):",
-            font=("Helvetica", 14),
-        ).pack(side=LEFT, padx=(10, 10))
-        retention_spinbox = ttk.Spinbox(
-            self.ui_elements["retention_frame"],
-            from_=30,
-            to=90,
-            increment=30,
-            textvariable=self.retention,
-            width=5,
-            command=self.change_detected,
-        )
-        retention_spinbox.pack(side=LEFT, padx=(0, 20))
-        self.ui_elements["retention_frame"].pack(side=LEFT)
-
-        # Checkbox to enable/disable recommendations
-        self.ui_elements["recommendation_checkbox"] = ttk.Checkbutton(
-            options_frame,
-            text="Recommend CCs",
-            variable=self.recommendation_enabled,
-            command=self.toggle_recommendation_visibility,
-        )
-        self.ui_elements["recommendation_checkbox"].pack(side=LEFT)
-        return options_frame
-
-    def _create_result_frame(self) -> Frame:
-        """Creates the frame to display the results (matched cameras)."""
-        result_frame = ttk.Frame(self.ui_elements["main_frame"])
-
-        # Store columns in a variable
-        columns = ("Name", "Count", "Matched Model")
-        self.ui_elements["treeview"] = ttk.Treeview(
-            result_frame,
-            columns=columns,
-            show="headings",
-        )
-
-        # Use the columns variable instead of subscripting the treeview
-        for col in columns:
-            self.ui_elements["treeview"].heading(col, text=col)
-        self.ui_elements["treeview"].column("Name", width=250)
-        self.ui_elements["treeview"].column(
-            "Count", width=100, anchor="center"
-        )
-        self.ui_elements["treeview"].column("Matched Model", width=250)
-
-        scrollbar_y = ttk.Scrollbar(
-            result_frame,
-            orient="vertical",
-            command=self.ui_elements["treeview"].yview,
-        )
-        scrollbar_x = ttk.Scrollbar(
-            result_frame,
-            orient="horizontal",
-            command=self.ui_elements["treeview"].xview,
-        )
-        self.ui_elements["treeview"].configure(
-            yscrollcommand=scrollbar_y.set,
-            xscrollcommand=scrollbar_x.set,
-        )
-
-        self.ui_elements["treeview"].pack(side=LEFT, fill=BOTH, expand=True)
-        scrollbar_y.pack(side=RIGHT, fill=Y)
-        scrollbar_x.pack(side=BOTTOM, fill=X)
-        return result_frame
-
-    def _create_details_frame(self) -> Frame:
-        """Creates the details frame to display additional information about the selected camera."""
-        details_frame = ttk.Frame(self.ui_elements["main_frame"], padding="10")
-        ttk.Label(
-            details_frame, text=DETAILS_LABEL, font=("Helvetica", 14)
-        ).pack(anchor="w")
-        self.ui_elements["details_text"] = Text(
-            details_frame, wrap=WORD, height=6, font=("Helvetica", 14)
-        )
-        self.ui_elements["details_text"].config(state=DISABLED)
-        self.ui_elements["details_text"].pack(fill=BOTH, expand=True, pady=5)
-        return details_frame
-
-    def _create_recommendation_frame(self) -> Frame:
-        """Creates the frame to display recommendations for connectors."""
-        recommendation_frame = ttk.Frame(
-            self.ui_elements["main_frame"], padding="10"
-        )
-        ttk.Label(
-            recommendation_frame,
-            text="Command Connector Recommendations",
-            font=("Helvetica", 14),
-        ).pack(anchor="w")
-
-        self.ui_elements["recommendation_text"] = Text(
-            recommendation_frame, wrap=WORD, height=4, font=("Helvetica", 14)
-        )
-        self.ui_elements["recommendation_text"].config(state=DISABLED)
-        self.ui_elements["recommendation_text"].pack(
-            fill=BOTH, expand=True, pady=5
-        )
-        return recommendation_frame
-
-    def _setup_layout(self):
-        """Arranges the layout of the main UI frames."""
-        self.ui_elements["main_frame"].pack(fill=BOTH, expand=True)
-        self.ui_elements["file_frame"].pack(fill=X, pady=(0, 10))
-        self.ui_elements["options_frame"].pack(fill=X, pady=(0, 10))
-        self.ui_elements["run_button"].pack(fill=X, pady=(0, 10))
-        self.ui_elements["status_label"].pack(fill=X, pady=(10, 0))
-        self.ui_elements["result_frame"].pack(fill=BOTH, expand=True)
-        self.ui_elements["details_frame"].pack(fill=X, pady=(10, 0))
-
-    def _configure_drag_and_drop(self):
-        """Configures drag-and-drop functionality for file selection."""
-        self.root.drop_target_register(DND_FILES)
-        self.root.dnd_bind("<<Drop>>", self.on_drop)
-
-    def on_drop(self, event):
-        """Handles file drop events."""
-        self.change_detected()
-        self._update_file_selection(event.data.strip("{}"))
-
-    def select_file(self):
-        """Opens a file dialog for selecting a customer CSV file."""
-        self.change_detected()
-        if file_path := filedialog.askopenfilename(
-            filetypes=[("CSV files", "*.csv")]
+    def select_files_event(self):
+        """
+        Shows files selected by the user and sets them as a button.
+        :return:
+        """
+        if files := filedialog.askopenfilenames(
+            title="Choose files to Run", filetypes=[("CSV files", "*.csv")]
         ):
-            self._update_file_selection(file_path)
+            # Clean Previous Files
+            self.file_paths.clear()
+            for widget in self.scrollable_frame.winfo_children():
+                widget.destroy()
 
-    def _update_file_selection(self, file_selection: str):
-        """Updates the file selection label and enables the run button."""
-        self.customer_file_path = file_selection
-        file_name = os.path.basename(self.customer_file_path)
-        self.ui_elements["file_status"].set(f"Selected: {file_name}")
-        self.ui_elements["run_button"].config(
-            state="normal", style="RunButton.TButton"
-        )
-        self.ui_elements["status_label"].config(
-            text="File loaded. Click 'Run Check' to process.",
-            foreground="#0e4503",
-            font=("Helvetica", 14),
-        )
+            # Add Files
+            for count, file in enumerate(files):
+                self.file_paths.append(file)
+                filename = os.path.basename(file)
+                ctk.CTkButton(
+                    self.scrollable_frame,
+                    text=filename,
+                    command=lambda f=file: self.run_compatibility_check(f),
+                ).grid(row=count, column=0, sticky="ew", pady=2)
+                self.scrollable_frame.configure(
+                    label_text=f"Selected Files ({len(self.file_paths)}):"
+                )
 
-    @time_function
-    def export_results(self):
-        """Exports results to a CSV file."""
-        cameras_dataframe = self.memory.get_results()
+    def run_compatibility_check(self, file_path):
+        """
+        Run a compatibility check for the provided customer camera list.
+        :param file_path:
+        :return:
+        """
+        self.page_label.configure(text=f"{os.path.basename(file_path)}")
+
+        if (
+            self.force_column_entry.get() is None
+            or self.force_column_entry.get().strip() == ""
+        ):
+            self.force_column_value = None
+        else:
+            self.force_column_value = int(self.force_column_entry.get())
+
+        if file_path:
+            matched_cameras = get_camera_match(
+                parse_customer_list(file_path),
+                self.verkada_compatibility_list,
+                self.force_column_value,
+            )
+            if matched_cameras is not None:
+                self.current_camera_list = (
+                    matched_cameras  # Store for reference
+                )
+                self.populate_table(matched_cameras)
+                self.update_general_info(file_path, matched_cameras)
+                print(matched_cameras)
+
+    def add_row_to_scrollable_frame(
+        self, frame, camera_name, verkada_camera, colors
+    ):
+        """Add a new row to the scrollable frame with camera information.
+        Args:
+            frame: The parent frame to add the row to
+            camera_name: Name of the camera
+            verkada_camera: Corresponding Verkada camera model
+            colors: Tuple of colors for the row background
+        """
+        row_frame = ctk.CTkFrame(frame, fg_color=colors, corner_radius=6)
+        row_frame.grid_columnconfigure(0, weight=1)
+        camera_button = ctk.CTkButton(
+            row_frame,
+            text=f"{camera_name} ({verkada_camera})",
+            anchor="w",
+            command=lambda f=camera_name: self.show_camera_details(f),
+            fg_color=colors,
+            hover_color=colors[::-1],
+            text_color=("#000000", "#ffffff"),
+        )
+        camera_button.grid(row=0, column=0, sticky="ew")
+        row_frame.pack(fill="x", padx=5, pady=2)
+
+    def show_camera_details(self, camera_name):
+        """
+        Shows the camera details for the specified camera.
+        :param camera_name:
+        :return:
+        """
+        # Clear previous camera details
+        for widget in self.camera_details_frame.winfo_children():
+            widget.destroy()
+
+        # Find camera in the current data
+        camera_data = None
+        for _, row in self.current_camera_list.iterrows():
+            if row["name"] == camera_name:
+                camera_data = row
+                break
+
+        if camera_data is not None:
+            # Get Verkada details
+            verkada_details = list_verkada_camera_details(
+                camera_data["verkada_model"], self.verkada_compatibility_list
+            )
+
+            # Display camera information
+            details = [
+                f"Name: {camera_name}",
+                f"Count: {int(camera_data['count'])}",
+                f"Match Type: {camera_data['match_type']}",
+            ]
+            if camera_data["match_type"] != "unsupported":
+                details = details + [
+                    "Verkada Verified Details:",
+                    f"  - Name: {camera_data['verkada_model']}",
+                    f"  - Manufacturer: {verkada_details[1]}",
+                    f"  - Min. Firmware: {verkada_details[2]}",
+                    f"  - Notes: {verkada_details[3]}",
+                ]
+            (
+                ctk.CTkLabel(
+                    self.camera_details_frame,
+                    text="\n".join(details),
+                    anchor="w",
+                    justify="left",
+                    wraplength=400,
+                ).pack(fill="both", padx=5, pady=5)
+            )
+
+    def populate_table(self, camera_list: pd.DataFrame):
+        """
+        Populate the table with camera information from the DataFrame.
+
+        Args:
+            camera_list: DataFrame containing camera information
+        """
+        for widget in self.output_scrollable.winfo_children():
+            widget.destroy()
+
+        for _, row in camera_list.iterrows():
+            color = _get_color_for_match_type(row["match_type"])
+            self.add_row_to_scrollable_frame(
+                self.output_scrollable,
+                row["name"],
+                row["verkada_model"],
+                color,
+            )
+
+    def set_recommend_cc_retention(self, value):
+        """
+        Set the recommendation retention value.
+
+        Args:
+            value: Retention value as string ("None" or number of days)
+        """
+        self.recommend_cc_value = 0 if value == "None" else int(value)
+
+    def set_force_column(self, value):
+        """
+        Set the force column value for data processing.
+
+        Args:
+            value: Column number to force
+        """
+        self.force_column_value = value
+
+    def export_event(self):
+        """
+        Export the current camera list to a CSV file.
+        Prompts user for save location and exports data.
+        """
+        cameras_dataframe = self.current_camera_list
         files = [("CSV files", "*.csv"), ("All Files", "*.*")]
         filepath = filedialog.asksaveasfilename(filetypes=files)
-        export_to_csv(cameras_dataframe, filepath)
+        if filepath:
+            export_to_csv(cameras_dataframe, filepath)
 
-    @time_function
-    def run_check(self):
-        """Runs the compatibility check when the 'Run Check' button is clicked."""
-        if not self.customer_file_path:
-            self.ui_elements["status_label"].config(
-                text=ERROR_NO_FILE,
-                foreground="#6b0601",
-                font=("Helvetica", 14),
-            )
-            return
 
-        self.ui_elements["status_label"].config(
-            text=PROCESSING_TEXT, foreground="#8f6400", font=("Helvetica", 14)
-        )
-        self.root.update()
+def change_appearance_mode_event(mode):
+    """
+    Change the application's appearance mode.
 
-        try:
-            compatibility_file = "Verkada Command Connector Compatibility.csv"
-            if not os.path.exists(compatibility_file):
-                compatibility_file = filedialog.askopenfilename(
-                    title="Select Compatibility List CSV",
-                    filetypes=[("CSV files", "*.csv")],
-                )
-                if not compatibility_file:
-                    self.ui_elements["status_label"].config(
-                        text="Error: Compatibility list not found.",
-                        foreground="#6b0601",
-                        font=("Helvetica", 14),
-                    )
-                    return
-
-            verkada_compatibility_list = compile_camera_mp_channels(
-                parse_hardware_compatibility_list(compatibility_file)
-            )
-            customer_cameras_list = sanitize_customer_data(
-                parse_customer_list(self.customer_file_path),
-                get_manufacturer_set(verkada_compatibility_list),
-            )
-            matched_cameras = get_camera_match(
-                customer_cameras_list, verkada_compatibility_list
-            )
-
-            if matched_cameras is not None:
-
-                self.memory.set_results(matched_cameras)
-                self.ui_elements["export_button"].config(
-                    state="normal", style="Export.TButton"
-                )
-
-                self._display_results(
-                    matched_cameras, verkada_compatibility_list
-                )
-                self.ui_elements["status_label"].config(
-                    text=COMPLETED_TEXT,
-                    foreground="#0e4503",
-                    font=("Helvetica", 14),
-                )
-
-                if self.recommendation_enabled.get():
-                    self._perform_recommendations(
-                        matched_cameras, verkada_compatibility_list
-                    )
-                else:
-                    self.ui_elements["recommendation_text"].config(
-                        state=NORMAL
-                    )
-                    self.ui_elements["recommendation_text"].delete(1.0, END)
-                    self.ui_elements["recommendation_text"].insert(
-                        END, "Recommendations not enabled."
-                    )
-                    self.ui_elements["recommendation_text"].config(
-                        state=DISABLED
-                    )
-            else:
-                self.ui_elements["status_label"].config(
-                    text=ERROR_PROCESSING,
-                    foreground="#6b0601",
-                    font=("Helvetica", 14),
-                )
-        except FileNotFoundError as e:
-            log.error("File not found: %s", str(e))
-            self.ui_elements["status_label"].config(
-                text="Error: File not found.",
-                foreground="#6b0601",
-                font=("Helvetica", 14),
-            )
-        except pd.errors.EmptyDataError as e:
-            log.error("Error in run_check: Empty CSV file. %s", str(e))
-            self.ui_elements["status_label"].config(
-                text="Error: Empty CSV file.",
-                foreground="#6b0601",
-                font=("Helvetica", 14),
-            )
-        self.toggle_change()
-
-    def _display_results(
-        self,
-        matched_cameras: pd.DataFrame,
-        verkada_list: List[CompatibleModel],
-    ):
-        """Displays the matched cameras in the Treeview widget."""
-        self.ui_elements["treeview"].delete(
-            *self.ui_elements["treeview"].get_children()
-        )
-        self._configure_tags()
-
-        for _, row in matched_cameras.iterrows():
-            verkada_details = list_verkada_camera_details(
-                row["verkada_model"], verkada_list
-            )
-            details = {
-                "Match Type": row["match_type"],
-                "Manufacturer": (
-                    verkada_details[1]
-                    if pd.notna(verkada_details[1])
-                    else "N/A"
-                ),
-                "Min. Firmware": (
-                    verkada_details[2]
-                    if pd.notna(verkada_details[2])
-                    else "N/A"
-                ),
-                "Notes": (
-                    verkada_details[3]
-                    if pd.notna(verkada_details[3])
-                    else "N/A"
-                ),
-            }
-
-            match_type = row.get("match_type", "unknown").lower()
-            tag = self._get_tag_for_match_type(str(match_type))
-
-            item_id = self.ui_elements["treeview"].insert(
-                "",
-                "end",
-                values=(row["name"], int(row["count"]), row["verkada_model"]),
-                tags=(tag,),
-            )
-            self.ui_elements["item_details"][item_id] = details
-
-        self.ui_elements["treeview"].bind(
-            "<ButtonRelease-1>", self.on_tree_click
-        )
-
-    def _configure_tags(self):
-        """Configures tags to color-code the Treeview rows based on match type."""
-        self.ui_elements["treeview"].tag_configure(
-            "unsupported", foreground="#000000", background=RED_COLOR
-        )
-        self.ui_elements["treeview"].tag_configure(
-            "potential", foreground="#000000", background=YELLOW_COLOR
-        )
-        self.ui_elements["treeview"].tag_configure(
-            "exact", foreground="#000000", background=GREEN_COLOR
-        )
-        self.ui_elements["treeview"].tag_configure(
-            "identified", foreground="#000000", background=BLUE_COLOR
-        )
-
-    def _get_tag_for_match_type(self, match_type: str) -> Optional[str]:
-        """Returns the appropriate tag for a given match type."""
-        tag_map = {
-            "unsupported": "unsupported",
-            "potential": "potential",
-            "exact": "exact",
-            "identified": "identified",
-        }
-        return tag_map.get(match_type)
-
-    def on_tree_click(self, event):
-        """Handles clicks on the Treeview rows to display additional camera details."""
-        if item := self.ui_elements["treeview"].identify_row(event.y):
-            if details := self.ui_elements["item_details"].get(item):
-                self.display_details(details)
-
-    def display_details(self, details):
-        """Displays the details of the selected camera in the details text box."""
-        self.ui_elements["details_text"].config(state=NORMAL)
-        self.ui_elements["details_text"].delete(1.0, END)
-
-        details_text = "\n".join(
-            f"{key}: {value}" for key, value in details.items()
-        )
-
-        self.ui_elements["details_text"].insert(END, details_text)
-        self.ui_elements["details_text"].config(state=DISABLED)
-
-    def _perform_recommendations(
-        self,
-        matched_cameras: pd.DataFrame,
-        verkada_list: List[CompatibleModel],
-    ):
-        """Performs the recommendation of connectors based on cameras and retention period."""
-        retention_days = self.retention.get()
-
-        recommend_connectors(
-            change=True,
-            retention=retention_days,
-            camera_dataframe=matched_cameras,
-            verkada_camera_list=verkada_list,
-            memory=self.memory,
-        )
-
-        recommendations = self.memory.get_recommendations()
-        excess_channels = self.memory.get_excess_channels()
-
-        self.ui_elements["recommendation_text"].config(state=NORMAL)
-        self.ui_elements["recommendation_text"].delete(1.0, END)
-
-        if recommendations:
-            rec_text = "Recommended Command Connectors:\n" + "\n".join(
-                [conn["name"] for conn in recommendations]
-            )
-            rec_text += f"\n\nExcess Channels: {excess_channels}"
-            self.ui_elements["recommendation_text"].insert(END, rec_text)
-        else:
-            self.ui_elements["recommendation_text"].insert(
-                END, "No recommendations available."
-            )
-
-        self.ui_elements["recommendation_text"].config(state=DISABLED)
-
-    def toggle_recommendation_visibility(self):
-        """Toggles the visibility of the recommendation UI elements based on the checkbox state."""
-        if self.recommendation_enabled.get():
-            self.ui_elements["retention_frame"].pack(side=LEFT)
-            self.ui_elements["recommendation_frame"].pack(fill=X, pady=(10, 0))
-        else:
-            self.ui_elements["retention_frame"].pack_forget()
-            self.ui_elements["recommendation_frame"].pack_forget()
-
-    def toggle_change(self):
-        """Toggles the change detection flag."""
-        log.debug(
-            "Setting self.change_detected_flag from %s to %s.",
-            self.change_detected_flag,
-            not self.change_detected_flag,
-        )
-        self.change_detected_flag = not self.change_detected_flag
-
-    def change_detected(self):
-        """Handles change detection and updates the status label accordingly."""
-        log.debug("Change detected")
-        self.change_detected_flag = True
-        self.ui_elements["status_label"].config(
-            text="Changes detected. Re-run the check for updated results.",
-            foreground="#004c8f",
-        )
+    Args:
+        mode: The appearance mode to set ("System", "Light", or "Dark")
+    """
+    ctk.set_appearance_mode(mode)
 
 
 if __name__ == "__main__":
-    try:
-        root = TkinterDnD.Tk()
-        app = CameraCompatibilityApp(root)
-        root.mainloop()
-    except TclError:
-        print("Exiting. No display detected.")
+    app = App()
+    app.mainloop()

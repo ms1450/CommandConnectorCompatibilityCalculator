@@ -10,27 +10,18 @@ Purpose: The contents of this file are to perform various calculations
 
 # Standard library imports
 import re
-from subprocess import check_call
-from sys import executable
 from typing import Dict, List, Optional, Union
-
-# Third-party library imports
-try:
-    import colorama
-    import numpy as np
-    import pandas as pd
-    from thefuzz import fuzz, process
-except ImportError as e:
-    package_name = str(e).split()[-1]
-    check_call([executable, "-m", "pip", "install", package_name])
-    # Import again after installation
-    import colorama
-    import numpy as np
-    import pandas as pd
-    from thefuzz import fuzz, process
+import numpy as np
+import pandas as pd
+from thefuzz import fuzz, process
 
 # Local/application-specific imports
-from app.formatting import get_camera_set, find_verkada_camera
+from app.formatting import (
+    get_camera_set,
+    find_verkada_camera,
+    sanitize_customer_data,
+    get_manufacturer_set,
+)
 from app import (
     log,
     logging_decorator,
@@ -38,9 +29,6 @@ from app import (
     CompatibleModel,
     Connector,
 )
-
-# Initialize colorama
-colorama.init(autoreset=True)
 
 
 @time_function
@@ -87,7 +75,6 @@ def identify_model_column_name(
 
         column_values = set()
         column_score = 0
-
         for camera in column_data.dropna():  # Remove NaN values
             if isinstance(camera, str) and (
                 camera and camera not in column_values
@@ -101,7 +88,6 @@ def identify_model_column_name(
                 column_values.add(
                     camera
                 )  # Add to set to avoid duplicate scoring
-
         return column_score
 
     # Apply the score calculation to each column in the DataFrame
@@ -185,14 +171,14 @@ def get_camera_count(
 
 
 def get_camera_match(
-    customer_list: pd.DataFrame,
+    raw_customer_list: pd.DataFrame,
     verkada_cameras: List[CompatibleModel],
     model_column: Optional[Union[int, str]] = None,
 ) -> pd.DataFrame:
     """Match customer cameras against a list of known Verkada cameras.
 
     Args:
-        customer_list (pd.DataFrame): The list of known cameras.
+        raw_customer_list (pd.DataFrame): The list of known cameras.
         verkada_cameras (List[CompatibleModel]): The list of known cameras.
         model_column (Optional[int]): The column index of the known camera model.
 
@@ -251,6 +237,10 @@ def get_camera_match(
             }
         )
 
+    customer_list = sanitize_customer_data(
+        raw_customer_list,
+        get_manufacturer_set(verkada_cameras),
+    )
     if model_column is None:
         camera_column = identify_model_column_name(
             customer_list, verkada_cameras
@@ -274,8 +264,7 @@ def get_camera_match(
         model_data = customer_list[camera_column]
     verkada_cameras_list = get_camera_set(verkada_cameras)
     result = model_data.apply(match_camera)
-
-    result = get_camera_count(customer_list, result)
+    result = get_camera_count(raw_customer_list, result)
     log.info("First 10 Matched Results: \n '%s'", result.head(10).to_string())
 
     # Define the order for sorting match types
@@ -291,7 +280,6 @@ def get_camera_match(
     sorted_result = result.sort_values(by="match_type_order").drop(
         columns=["match_type_order"]
     )
-
     return sorted_result
 
 

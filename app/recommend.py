@@ -6,20 +6,11 @@ Purpose: Recommend a Command Connector based on a given site of criteria.
 # pylint: disable=ungrouped-imports
 
 # Standard library imports
-from subprocess import check_call
-from sys import executable
 from typing import List, Optional
 
 # Third-party library imports
-try:
-    import pandas as pd
-    from colorama import init, Fore, Style
-except ImportError as e:
-    package_name = str(e).split()[-1]
-    check_call([executable, "-m", "pip", "install", package_name])
-    # Import again after installation
-    import pandas as pd
-    from colorama import init, Fore, Style
+import pandas as pd
+
 
 from app import (
     CompatibleModel,
@@ -37,8 +28,6 @@ from app.calculations import (
     count_mp,
 )
 from app.memory_management import MemoryStorage
-
-init(autoreset=True)  # Initialize colorized output
 
 
 # Ensure the dictionaries match the `Connector` TypedDict structure
@@ -242,12 +231,7 @@ def recommend_connector(
     memory.set_recommendations(recommendations)
     memory.set_excess_channels(excess_channels)
     log.debug(recommendations)
-    log.debug(
-        "%sExcess channels: %d%s",
-        Fore.LIGHTMAGENTA_EX,
-        excess_channels,
-        Style.RESET_ALL,
-    )
+    log.debug("Excess channels: %d", excess_channels)
     # print(", ".join(get_connectors(total_required_channels, storage)))
 
 
