@@ -9,38 +9,16 @@ Purpose: The contents of this file are to perform formatting for the
 import os
 import re
 from collections import defaultdict
-from subprocess import check_call
-from sys import executable
 from typing import Dict, List, Optional, Set
-
-try:
-    import pandas as pd
-    import colorama
-    from colorama import Fore, Style
-    from nltk.corpus import words
-    from nltk.downloader import download
-    from pandas import Series
-    from tabulate import tabulate
-except ImportError as e:
-    package_name = str(e).split()[-1]
-    check_call([executable, "-m", "pip", "install", package_name])
-    # Import again after installation
-    import pandas as pd
-    import colorama
-    from colorama import Fore, Style
-    from nltk.corpus import words
-    from nltk.downloader import download
-    from pandas import Series
-    from tabulate import tabulate
-
+import pandas as pd
+from nltk.corpus import words
+from nltk.downloader import download
+from pandas import Series
+from tabulate import tabulate
 
 from app import CompatibleModel, Connector, logging_decorator
 
 NLTK_DATA_PATH = "./misc/nltk_data"
-
-
-# Initialize colorama
-colorama.init(autoreset=True)
 
 
 def get_camera_set(verkada_list: List[CompatibleModel]) -> Set[str]:
@@ -302,9 +280,7 @@ def tabulate_data(data: List[List[str]]) -> None:
         None
     """
     # Extract column names (first element)
-    headers = [
-        f"{Fore.LIGHTBLACK_EX}{row[0]}{Style.RESET_ALL}" for row in data
-    ]
+    headers = [f"{row[0]}" for row in data]
 
     # Extract data starting from the second element
     table = [row[1:] for row in data]
@@ -356,6 +332,7 @@ def print_connector_recommendation(recommendations: List[Connector]):
             tablefmt="rounded_outline",
         )
     )
+    return device_table
 
 
 def export_to_csv(df: pd.DataFrame, path: str) -> None:
