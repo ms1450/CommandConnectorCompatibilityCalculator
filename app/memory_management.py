@@ -6,7 +6,6 @@ compute in the application.
 
 # pylint: disable=ungrouped-imports
 
-# from app.output import gui_creation
 from app.formatting import print_connector_recommendation
 
 
@@ -205,4 +204,4 @@ class MemoryStorage:
         Returns:
             None
         """
-        print_connector_recommendation(self.recommendations)
+        return print_connector_recommendation(self.recommendations)
