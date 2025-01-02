@@ -4,6 +4,7 @@ Co-Author: Ian Young
 Purpose: Import a list of third-party cameras and return
     which cameras are compatible with the command connector.
 """
+
 # pylint: disable=attribute-defined-outside-init,too-many-instance-attributes
 # Standard library imports
 import os
@@ -73,7 +74,9 @@ class App(ctk.CTk):
 
     def _init_variables(self):
         self.file_paths = []
-        self.command_connector_compatibility_list = "Verkada Command Connector Compatibility.csv"
+        self.command_connector_compatibility_list = (
+            "Verkada Command Connector Compatibility.csv"
+        )
         self.verkada_compatibility_list = None
         self.current_camera_list = None
         self.recommend_cc_value = 0
@@ -129,12 +132,16 @@ class App(ctk.CTk):
             self.info_panel,
             text="General Information",
             fg_color=("gray85", "gray20"),
-            corner_radius=6
+            corner_radius=6,
         )
-        self.general_info_label.grid(row=0, column=0, sticky="ew", padx=5, pady=3)
+        self.general_info_label.grid(
+            row=0, column=0, sticky="ew", padx=5, pady=3
+        )
 
         self.general_info_frame = ctk.CTkFrame(self.info_panel)
-        self.general_info_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=3)
+        self.general_info_frame.grid(
+            row=1, column=0, sticky="ew", padx=5, pady=3
+        )
         self.general_info_frame.grid_columnconfigure(0, weight=1)
 
     def _create_camera_details_section(self):
@@ -142,12 +149,16 @@ class App(ctk.CTk):
             self.info_panel,
             text="Camera Details",
             fg_color=("gray85", "gray20"),
-            corner_radius=6
+            corner_radius=6,
         )
-        self.camera_details_label.grid(row=2, column=0, sticky="ew", padx=5, pady=3)
+        self.camera_details_label.grid(
+            row=2, column=0, sticky="ew", padx=5, pady=3
+        )
 
         self.camera_details_frame = ctk.CTkFrame(self.info_panel)
-        self.camera_details_frame.grid(row=3, column=0, sticky="nsew", padx=5, pady=3)
+        self.camera_details_frame.grid(
+            row=3, column=0, sticky="nsew", padx=5, pady=3
+        )
         self.camera_details_frame.grid_columnconfigure(0, weight=1)
         self.camera_details_frame.grid_rowconfigure(0, weight=1)
 
@@ -163,29 +174,37 @@ class App(ctk.CTk):
 
     def _create_output_scrollable(self):
         self.output_scrollable = ctk.CTkScrollableFrame(
-            self.bottom_frame,
-            label_text="Camera Compatibility List"
+            self.bottom_frame, label_text="Camera Compatibility List"
         )
-        self.output_scrollable.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.output_scrollable.grid(
+            row=0, column=0, sticky="nsew", padx=5, pady=5
+        )
         self.output_scrollable.grid_columnconfigure(0, weight=1)
 
     def _process_match_counts(self, camera_list):
         if not camera_list.empty:
-            match_counts = camera_list.groupby("match_type")["count"].sum().to_dict()
+            match_counts = (
+                camera_list.groupby("match_type")["count"].sum().to_dict()
+            )
         else:
             match_counts = {}
 
-        self.current_file_info.update({
-            "exact_matches": match_counts.get("exact", 0),
-            "identified_matches": match_counts.get("identified", 0),
-            "potential_matches": match_counts.get("potential", 0),
-            "unsupported_matches": match_counts.get("unsupported", 0)
-        })
+        self.current_file_info.update(
+            {
+                "exact_matches": match_counts.get("exact", 0),
+                "identified_matches": match_counts.get("identified", 0),
+                "potential_matches": match_counts.get("potential", 0),
+                "unsupported_matches": match_counts.get("unsupported", 0),
+            }
+        )
 
         self.current_file_info["total_cameras"] = sum(
-            self.current_file_info[k] for k in [
-                "exact_matches", "identified_matches",
-                "potential_matches", "unsupported_matches"
+            self.current_file_info[k]
+            for k in [
+                "exact_matches",
+                "identified_matches",
+                "potential_matches",
+                "unsupported_matches",
             ]
         )
 
@@ -199,12 +218,14 @@ class App(ctk.CTk):
                 self.recommend_cc_value,
                 self.current_camera_list,
                 self.verkada_compatibility_list,
-                memory
+                memory,
             )
             recommendations = memory.print_recommendations()
             if recommendations:
                 print("HERE!")
-                info_text.extend(_format_recommendations(recommendations, memory))
+                info_text.extend(
+                    _format_recommendations(recommendations, memory)
+                )
 
         return info_text
 
@@ -212,13 +233,12 @@ class App(ctk.CTk):
         return [
             f"File: {self.current_file_info['filename']} "
             f"({self.current_file_info['filesize']:.2f} KB)",
-            f"Total Cameras: "
-            f"{self.current_file_info['total_cameras']}",
+            f"Total Cameras: " f"{self.current_file_info['total_cameras']}",
             "Camera Breakdown:",
             f"  - Exact Matches: {self.current_file_info['exact_matches']}",
             f"  - Identified Matches: {self.current_file_info['identified_matches']}",
             f"  - Potential Matches: {self.current_file_info['potential_matches']}",
-            f"  - Unsupported Matches: {self.current_file_info['unsupported_matches']}"
+            f"  - Unsupported Matches: {self.current_file_info['unsupported_matches']}",
         ]
 
     def _init_sidebar(self):
@@ -341,8 +361,10 @@ class App(ctk.CTk):
             widget.destroy()
 
         # Update file information
-        self.current_file_info = {"filename": os.path.basename(file_path),
-                                  "filesize": os.path.getsize(file_path) / 1024}
+        self.current_file_info = {
+            "filename": os.path.basename(file_path),
+            "filesize": os.path.getsize(file_path) / 1024,
+        }
 
         # Process match counts
         self._process_match_counts(camera_list)

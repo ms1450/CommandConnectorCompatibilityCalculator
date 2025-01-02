@@ -16,10 +16,10 @@ from app.formatting import list_verkada_camera_details, strip_ansi_codes
 
 
 def print_results(
-        change: bool,
-        results: pd.DataFrame,
-        verkada_list: List[CompatibleModel],
-        memory,
+    change: bool,
+    results: pd.DataFrame,
+    verkada_list: List[CompatibleModel],
+    memory,
 ):
     """Print and save a formatted list of camera data.
 
