@@ -4,10 +4,9 @@ Co-Author: Ian Young
 Purpose: Import a list of third-party cameras and return
     which cameras are compatible with the command connector.
 """
-
+# pylint: disable=attribute-defined-outside-init,too-many-instance-attributes
 # Standard library imports
 import os
-from typing import List
 from tkinter import filedialog
 
 # Third-party imports
@@ -31,24 +30,58 @@ ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
 
+def _format_recommendations(recommendations, memory):
+    formatted = ["\nRecommended Connectors:"]
+    formatted.extend(f"  - {rec[0]}: {rec[1]}" for rec in recommendations)
+    formatted.append(f"\nExcess Channels: {memory.get_excess_channels()}")
+    return formatted
+
+
+def _get_color_for_match_type(match_type: str) -> tuple:
+    """
+    Get the color scheme for a given match type.
+
+    Args:
+        match_type: Type of camera match
+
+    Returns:
+        tuple: Pair of colors for normal and hover states
+    """
+    color_map = {
+        "exact": ("#a0e77d", "#61724C"),  # Green
+        "identified": ("#82b6d9", "#4C4E72"),  # Blue
+        "potential": ("#ebd671", "#726E4C"),  # Yellow
+        "unsupported": ("#ef8677", "#724C4C"),  # Red
+    }
+    return color_map.get(match_type, ("#ffffff", "#000000"))
+
+
 class App(ctk.CTk):
     """A class to manage the GUI for Command Connector Compatibility Calculator."""
 
     def __init__(self):
-        """Initialize the application and its components."""
         super().__init__()
+        self.force_column_value = None
+        self.current_file_info = None
+        self.recommend_cc_value = None
+        self.current_camera_list = None
+        self._init_variables()
+        self._init_window()
+        self._init_sidebar()
+        self._create_main_window()
+        self._load_compatibility_list()
 
-        # Initialize all attributes in __init__
-        self.file_paths: List[str] = []
-        self.command_connector_compatibility_list = (
-            "Verkada Command Connector Compatibility.csv"
-        )
+    def _init_variables(self):
+        self.file_paths = []
+        self.command_connector_compatibility_list = "Verkada Command Connector Compatibility.csv"
         self.verkada_compatibility_list = None
         self.current_camera_list = None
         self.recommend_cc_value = 0
         self.force_column_value = 0
+        self.current_file_info = {}
+        self._init_ui_components()
 
-        # Initialize UI components
+    def _init_ui_components(self):
         self.sidebar_frame = None
         self.logo_label = None
         self.tabview = None
@@ -66,24 +99,127 @@ class App(ctk.CTk):
         self.general_info_frame = None
         self.camera_details_label = None
         self.camera_details_frame = None
-        self.current_file_info = {}
 
-        # Setup initial window configuration
+    def _init_window(self):
         self.title("Command Connector Compatibility Calculator")
         self.geometry(f"{1100}x{580}")
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # Load compatibility list
+    def _load_compatibility_list(self):
         self.verkada_compatibility_list = compile_camera_mp_channels(
             parse_hardware_compatibility_list(
                 self.command_connector_compatibility_list
             )
         )
 
-        # Initialize UI components
-        self._init_sidebar()
-        self._create_main_window()
+    def _create_info_panel(self):
+        self._create_info_panel_structure()
+        self._create_general_info_section()
+        self._create_camera_details_section()
+
+    def _create_info_panel_structure(self):
+        self.info_panel = ctk.CTkFrame(self.bottom_frame)
+        self.info_panel.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+        self.info_panel.grid_columnconfigure(0, weight=4)
+        self.info_panel.grid_rowconfigure(3, weight=1)
+
+    def _create_general_info_section(self):
+        self.general_info_label = ctk.CTkLabel(
+            self.info_panel,
+            text="General Information",
+            fg_color=("gray85", "gray20"),
+            corner_radius=6
+        )
+        self.general_info_label.grid(row=0, column=0, sticky="ew", padx=5, pady=3)
+
+        self.general_info_frame = ctk.CTkFrame(self.info_panel)
+        self.general_info_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=3)
+        self.general_info_frame.grid_columnconfigure(0, weight=1)
+
+    def _create_camera_details_section(self):
+        self.camera_details_label = ctk.CTkLabel(
+            self.info_panel,
+            text="Camera Details",
+            fg_color=("gray85", "gray20"),
+            corner_radius=6
+        )
+        self.camera_details_label.grid(row=2, column=0, sticky="ew", padx=5, pady=3)
+
+        self.camera_details_frame = ctk.CTkFrame(self.info_panel)
+        self.camera_details_frame.grid(row=3, column=0, sticky="nsew", padx=5, pady=3)
+        self.camera_details_frame.grid_columnconfigure(0, weight=1)
+        self.camera_details_frame.grid_rowconfigure(0, weight=1)
+
+    def _create_bottom_frame(self):
+        self.bottom_frame = ctk.CTkFrame(self.main_frame)
+        self.bottom_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.bottom_frame.grid_rowconfigure(0, weight=1)
+        self.bottom_frame.grid_columnconfigure(0, weight=6)
+        self.bottom_frame.grid_columnconfigure(1, weight=1)
+
+        self._create_output_scrollable()
+        self._create_info_panel()
+
+    def _create_output_scrollable(self):
+        self.output_scrollable = ctk.CTkScrollableFrame(
+            self.bottom_frame,
+            label_text="Camera Compatibility List"
+        )
+        self.output_scrollable.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.output_scrollable.grid_columnconfigure(0, weight=1)
+
+    def _process_match_counts(self, camera_list):
+        if not camera_list.empty:
+            match_counts = camera_list.groupby("match_type")["count"].sum().to_dict()
+        else:
+            match_counts = {}
+
+        self.current_file_info.update({
+            "exact_matches": match_counts.get("exact", 0),
+            "identified_matches": match_counts.get("identified", 0),
+            "potential_matches": match_counts.get("potential", 0),
+            "unsupported_matches": match_counts.get("unsupported", 0)
+        })
+
+        self.current_file_info["total_cameras"] = sum(
+            self.current_file_info[k] for k in [
+                "exact_matches", "identified_matches",
+                "potential_matches", "unsupported_matches"
+            ]
+        )
+
+    def _get_info_text_with_recommendations(self):
+        info_text = self._get_basic_info_text()
+
+        if self.recommend_cc_value != 0:
+            memory = MemoryStorage()
+            recommend_connectors(
+                True,
+                self.recommend_cc_value,
+                self.current_camera_list,
+                self.verkada_compatibility_list,
+                memory
+            )
+            recommendations = memory.print_recommendations()
+            if recommendations:
+                print("HERE!")
+                info_text.extend(_format_recommendations(recommendations, memory))
+
+        return info_text
+
+    def _get_basic_info_text(self):
+        return [
+            f"File: {self.current_file_info['filename']} "
+            f"({self.current_file_info['filesize']:.2f} KB)",
+            f"Total Cameras: "
+            f"{self.current_file_info['total_cameras']}",
+            "Camera Breakdown:",
+            f"  - Exact Matches: {self.current_file_info['exact_matches']}",
+            f"  - Identified Matches: {self.current_file_info['identified_matches']}",
+            f"  - Potential Matches: {self.current_file_info['potential_matches']}",
+            f"  - Unsupported Matches: {self.current_file_info['unsupported_matches']}"
+        ]
 
     def _init_sidebar(self):
         self.sidebar_frame = ctk.CTkFrame(self, width=300, corner_radius=0)
@@ -173,17 +309,13 @@ class App(ctk.CTk):
         # Main frame
         self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=5)
-        self.main_frame.grid_rowconfigure(
-            1, weight=1
-        )  # Make bottom section expandable
+        self.main_frame.grid_rowconfigure(1, weight=1)
         self.main_frame.grid_columnconfigure(0, weight=1)
 
         # Top section
         self.top_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         self.top_frame.grid(row=0, column=0, sticky="nsew")
-        self.top_frame.grid_columnconfigure(
-            0, weight=1
-        )  # Make page label expandable
+        self.top_frame.grid_columnconfigure(0, weight=1)
 
         self.page_label = ctk.CTkLabel(
             self.top_frame,
@@ -199,87 +331,8 @@ class App(ctk.CTk):
         )
         self.export_button.grid(row=0, column=1, sticky="e", padx=5, pady=5)
 
-        # Bottom section
-        self.bottom_frame = ctk.CTkFrame(self.main_frame)
-        self.bottom_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
-        self.bottom_frame.grid_rowconfigure(
-            0, weight=1
-        )  # Make content expandable vertically
-        self.bottom_frame.grid_columnconfigure(
-            0, weight=6
-        )  # Camera list gets more space
-        self.bottom_frame.grid_columnconfigure(
-            1, weight=1
-        )  # Info panel gets less space
-
-        # Left side - Compatible Cameras
-        self.output_scrollable = ctk.CTkScrollableFrame(
-            self.bottom_frame, label_text="Camera Compatibility List"
-        )
-        self.output_scrollable.grid(
-            row=0, column=0, sticky="nsew", padx=5, pady=5
-        )
-        self.output_scrollable.grid_columnconfigure(
-            0, weight=1
-        )  # Make content expand horizontally
-
-        # Right side - Information Panel
-        self.info_panel = ctk.CTkFrame(self.bottom_frame)
-        self.info_panel.grid(
-            row=0, column=1, sticky="nsew", padx=5, pady=5
-        )  # Changed to nsew
-        self.info_panel.grid_columnconfigure(
-            0, weight=4
-        )  # Make content expand horizontally
-        self.info_panel.grid_rowconfigure(
-            3, weight=1
-        )  # Make camera details expand vertically
-
-        # General Information Section
-        self.general_info_label = ctk.CTkLabel(
-            self.info_panel,
-            text="General Information",
-            fg_color=("gray85", "gray20"),
-            corner_radius=6,
-        )
-        self.general_info_label.grid(
-            row=0, column=0, sticky="ew", padx=5, pady=3
-        )
-
-        self.general_info_frame = ctk.CTkFrame(self.info_panel)
-        self.general_info_frame.grid(
-            row=1, column=0, sticky="ew", padx=5, pady=3
-        )
-        self.general_info_frame.grid_columnconfigure(0, weight=1)
-
-        # Camera Details Section
-        self.camera_details_label = ctk.CTkLabel(
-            self.info_panel,
-            text="Camera Details",
-            fg_color=("gray85", "gray20"),
-            corner_radius=6,
-        )
-        self.camera_details_label.grid(
-            row=2, column=0, sticky="ew", padx=5, pady=3
-        )
-
-        self.camera_details_frame = ctk.CTkFrame(self.info_panel)
-        self.camera_details_frame.grid(
-            row=3, column=0, sticky="nsew", padx=5, pady=3
-        )
-        self.camera_details_frame.grid_columnconfigure(0, weight=1)
-        self.camera_details_frame.grid_rowconfigure(0, weight=1)
-
-        # Initialize storage for file information
-        self.current_file_info = {
-            "filename": "",
-            "filesize": 0,
-            "total_cameras": 0,
-            "exact_matches": 0,
-            "identified_matches": 0,
-            "potential_matches": 0,
-            "unsupported_matches": 0,
-        }
+        # Create bottom frame with scrollable output and info panel
+        self._create_bottom_frame()
 
     def update_general_info(self, file_path, camera_list):
         """Update the general information display."""
@@ -288,73 +341,14 @@ class App(ctk.CTk):
             widget.destroy()
 
         # Update file information
-        self.current_file_info = {}
-        self.current_file_info["filename"] = os.path.basename(file_path)
-        self.current_file_info["filesize"] = (
-            os.path.getsize(file_path) / 1024
-        )  # Convert to KB
+        self.current_file_info = {"filename": os.path.basename(file_path),
+                                  "filesize": os.path.getsize(file_path) / 1024}
 
-        # Count different types of matches
-        if not camera_list.empty:
-            match_counts = (
-                camera_list.groupby("match_type")["count"].sum().to_dict()
-            )
-        else:
-            match_counts = {}
+        # Process match counts
+        self._process_match_counts(camera_list)
 
-        self.current_file_info["exact_matches"] = match_counts.get("exact", 0)
-        self.current_file_info["identified_matches"] = match_counts.get(
-            "identified", 0
-        )
-        self.current_file_info["potential_matches"] = match_counts.get(
-            "potential", 0
-        )
-        self.current_file_info["unsupported_matches"] = match_counts.get(
-            "unsupported", 0
-        )
-
-        self.current_file_info["total_cameras"] = (
-            self.current_file_info["exact_matches"]
-            + self.current_file_info["identified_matches"]
-            + self.current_file_info["potential_matches"]
-            + self.current_file_info["unsupported_matches"]
-        )
-
-        # Display information
-        info_text = [
-            f"File: {self.current_file_info['filename']} \
-            ({self.current_file_info['filesize']:.2f} KB)",
-            f"Total Cameras: {self.current_file_info['total_cameras']}",
-            "Camera Breakdown:",
-            f"  - Exact Matches: {self.current_file_info['exact_matches']}",
-            f"  - Identified Matches: {self.current_file_info['identified_matches']}",
-            f"  - Potential Matches: {self.current_file_info['potential_matches']}",
-            f"  - Unsupported Matches: {self.current_file_info['unsupported_matches']}",
-        ]
-
-        # If recommendations are enabled
-        if (
-            hasattr(self, "recommend_cc_value")
-            and self.recommend_cc_value != 0
-        ):
-            memory = MemoryStorage()
-            recommend_connectors(
-                True,
-                self.recommend_cc_value,
-                self.current_camera_list,
-                self.verkada_compatibility_list,
-                memory,
-            )
-            recommendations = memory.print_recommendations()
-            if recommendations:
-                info_text.append("\nRecommended Connectors:")
-                for recommendation in recommendations:
-                    info_text.append(
-                        f"  - {recommendation[0]}: {recommendation[1]}"
-                    )
-                info_text.append(
-                    f"\nExcess Channels: {memory.get_excess_channels()}"
-                )
+        # Get info text with recommendations
+        info_text = self._get_info_text_with_recommendations()
 
         # Create label with updated info
         ctk.CTkLabel(
@@ -503,7 +497,7 @@ class App(ctk.CTk):
             widget.destroy()
 
         for _, row in camera_list.iterrows():
-            color = self._get_color_for_match_type(row["match_type"])
+            color = _get_color_for_match_type(row["match_type"])
             self.add_row_to_scrollable_frame(
                 self.output_scrollable,
                 row["name"],
@@ -539,24 +533,6 @@ class App(ctk.CTk):
         filepath = filedialog.asksaveasfilename(filetypes=files)
         if filepath:
             export_to_csv(cameras_dataframe, filepath)
-
-    def _get_color_for_match_type(self, match_type: str) -> tuple:
-        """
-        Get the color scheme for a given match type.
-
-        Args:
-            match_type: Type of camera match
-
-        Returns:
-            tuple: Pair of colors for normal and hover states
-        """
-        color_map = {
-            "exact": ("#a0e77d", "#61724C"),  # Green
-            "identified": ("#82b6d9", "#4C4E72"),  # Blue
-            "potential": ("#ebd671", "#726E4C"),  # Yellow
-            "unsupported": ("#ef8677", "#724C4C"),  # Red
-        }
-        return color_map.get(match_type, ("#ffffff", "#000000"))
 
 
 def change_appearance_mode_event(mode):
