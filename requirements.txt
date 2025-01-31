@@ -47,7 +47,7 @@ Pygments==2.18.0
 pylint~=3.3.1
 pytest~=8.3.3
 python-dateutil==2.9.0.post0
-pytz==2024.2
+pytz==2025.1
 pyzmq==26.2.0
 RapidFuzz==3.11.0
 referencing==0.35.1
