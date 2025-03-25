@@ -50,7 +50,7 @@ python-dateutil==2.9.0.post0
 referencing==0.36.2
 RapidFuzz==3.12.2
 pyzmq==26.3.0
-pytz==2025.1
+pytz==2025.2
 regex==2024.11.6
 requests==2.32.3
 rpds-py==0.23.1
