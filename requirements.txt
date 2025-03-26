@@ -53,7 +53,7 @@ pyzmq==26.3.0
 pytz==2025.1
 regex==2024.11.6
 requests==2.32.3
-rpds-py==0.23.1
+rpds-py==0.24.0
 six==1.17.0
 soupsieve==2.6
 stack-data==0.6.3
